@@ -2,13 +2,17 @@
   "schemaVersion": 1,
   "id": "silentnet-guard",
   "version": "${version}",
-  "name": "SilentNet Guard",
-  "description": "Erkennt die SilentNet-Malware (Session-Token-Stealer) und aehnliche Mods und bricht den Start von Minecraft ab.",
-  "authors": ["lumiwork"],
+  "name": "SilentNet Guard - InjectedMod Assist",
+  "description": "Prüft vor dem Start alle Mods auf Token-Stealer, RATs und eingeschleusten Code, bestätigt Original-Dateien über Modrinth/Maven Central und zeigt einen Prüfbericht, in dem du entscheidest, ob Minecraft startet.",
+  "authors": [
+    "lumiwork"
+  ],
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
-    "preLaunch": ["de.lumiwork.silentnetguard.SilentNetGuard"]
+    "preLaunch": [
+      "de.lumiwork.silentnetguard.SilentNetGuard"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.16.0",

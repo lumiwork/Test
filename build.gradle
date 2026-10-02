@@ -37,9 +37,9 @@ processResources {
     }
 }
 
-// Kommandozeilen-Scanner ohne Minecraft: gradle scan -Pjars="pfad/zu/mod.jar"
+// Kommandozeilen-Scanner ohne Minecraft: gradle scan -Pjars="--online,pfad/zu/mod.jar"
 tasks.register('scan', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'de.lumiwork.silentnetguard.ModScanner'
+    mainClass = 'de.lumiwork.silentnetguard.Cli'
     args = (project.findProperty('jars') ?: '').toString().split(',').findAll { it }.toList()
 }
