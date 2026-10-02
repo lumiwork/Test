@@ -1,0 +1,45 @@
+plugins {
+    id 'java'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = 'silentnet-guard'
+}
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
+}
+
+dependencies {
+    // Nur fuer PreLaunchEntrypoint/FabricLoader; Minecraft-Code wird nicht benoetigt.
+    compileOnly "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+// Kommandozeilen-Scanner ohne Minecraft: gradle scan -Pjars="pfad/zu/mod.jar"
+tasks.register('scan', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.lumiwork.silentnetguard.ModScanner'
+    args = (project.findProperty('jars') ?: '').toString().split(',').findAll { it }.toList()
+}
