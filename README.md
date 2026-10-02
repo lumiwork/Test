@@ -16,6 +16,23 @@ es wird nichts davon geladen oder ausgeführt – und vergibt Punkte:
 | Liest den Session-Token (`class_320.method_1674` = `Session.getAccessToken`) | 30 |
 | Startet sich selbst als eigenen Prozess (`ProcessBuilder` + `getCodeSource`) | 30 |
 | Große verschlüsselte Payload-Datei (≥ 256 KB, Entropie ≥ 7,9, kein Bild/Sound/Archiv) | 30 |
+| Klassen direkt in `com/github/` ohne Unterpaket (eingeschleuster Code) | 20 |
+| Diese Klassen enthalten ≥ 5 SilentNet-verschlüsselte String-Literale | 40 |
+| Entrypoint in `fabric.mod.json` zeigt auf `com.github.<Klasse>` | 30 |
+
+### Infizierte echte Mods
+
+SilentNet schleust seine Klassen auch in **andere, echte Mods** ein. Hash und Metadaten stimmen dann nicht mehr,
+deshalb wird gezielt nach dem eingeschleusten Code gesucht:
+
+- Klassen direkt in `com/github/` (z. B. `com/github/dDhfz.class`). Echte Bibliotheken liegen immer in
+  Unterpaketen wie `com/github/<user>/<projekt>/…`.
+- Die typische String-Verschlüsselung in diesen Klassen: Literale, deren erstes oder letztes Zeichen eine kleine
+  Schlüssellänge (1–31) ist und deren Rest fast nur aus Zeichen außerhalb von Latin-1 besteht. Es wird nur diese
+  Form erkannt, nichts entschlüsselt.
+- Ein zusätzlicher Entrypoint in `fabric.mod.json`, der auf eine solche Klasse zeigt.
+
+Schon eine einzige eingeschleuste, verschlüsselte Klasse ergibt 60 Punkte und damit einen Treffer.
 
 Ab **60 Punkten** gilt eine Mod als schädlich. Ein einzelnes Merkmal reicht also nie (außer dem bekannten Hash),
 dadurch werden auch abgewandelte Varianten erkannt, ohne dass z. B. Account-Switcher-Mods Fehlalarm auslösen.
@@ -42,7 +59,7 @@ Bei einem Fund wird `silentnet-guard-report.txt` im Spielordner geschrieben und 
 ./gradlew build
 ```
 
-Die fertige Mod liegt danach in `build/libs/silentnet-guard-1.0.0.jar` und kommt in den `mods`-Ordner.
+Die fertige Mod liegt danach in `build/libs/silentnet-guard-1.1.0.jar` und kommt in den `mods`-Ordner.
 
 Ohne Minecraft einzelne Dateien prüfen:
 

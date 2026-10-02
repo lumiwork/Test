@@ -14,6 +14,9 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -33,6 +36,17 @@ public final class ModScanner {
 
     private static final long PAYLOAD_MIN_SIZE = 256 * 1024;
     private static final double PAYLOAD_MIN_ENTROPY = 7.9;
+
+    /** Klasse direkt in com/github/ ohne Unterpaket, z. B. com/github/dDhfz.class oder com/github/dDhfz$xy.class. */
+    private static final Pattern INJECTED_CLASS = Pattern.compile("com/github/[^/]+\\.class");
+    /** Entrypoint in fabric.mod.json, der auf so eine Klasse zeigt. */
+    private static final Pattern INJECTED_ENTRYPOINT = Pattern.compile("\"(com\\.github\\.[A-Za-z0-9_$]+)\"");
+    /** Ab so vielen verschluesselten Literalen gilt eine Klasse als SilentNet-verschluesselt. */
+    private static final int ENCRYPTED_LITERALS_MIN = 5;
+
+    /** Constant-Pool-Inhalt einer Klasse: alle UTF8-Eintraege und die String-Literale (ldc). */
+    record ClassInfo(Set<String> utf8, List<String> literals) {
+    }
 
     public record Result(Path file, String sha256, int score, List<String> findings) {
         public boolean malicious() {
@@ -58,6 +72,8 @@ public final class ModScanner {
         boolean ownJarPath = false;
         boolean payload = false;
         String tokenClass = null;
+        Set<String> injectedClasses = new TreeSet<>();
+        Set<String> encryptedClasses = new TreeSet<>();
 
         try (ZipFile zip = new ZipFile(jar.toFile())) {
             Enumeration<? extends ZipEntry> entries = zip.entries();
@@ -69,11 +85,19 @@ public final class ModScanner {
                 String name = entry.getName();
 
                 if (name.endsWith(".class")) {
-                    Set<String> pool;
+                    ClassInfo info;
                     try (InputStream in = zip.getInputStream(entry)) {
-                        pool = constantPoolStrings(in.readAllBytes());
+                        info = readClass(in.readAllBytes());
                     } catch (IOException | RuntimeException e) {
                         continue;
+                    }
+                    Set<String> pool = info.utf8();
+                    boolean injected = INJECTED_CLASS.matcher(name).matches();
+                    if (injected) {
+                        injectedClasses.add(name);
+                    }
+                    if (injected && countEncryptedLiterals(info.literals()) >= ENCRYPTED_LITERALS_MIN) {
+                        encryptedClasses.add(name);
                     }
                     // class_320 = Session, method_1674 = getAccessToken (intermediary)
                     if (pool.contains("net/minecraft/class_320") && pool.contains("method_1674")) {
@@ -95,6 +119,11 @@ public final class ModScanner {
                         score += 40;
                         findings.add("Tarn-Metadaten: id \"package\" / \"Core library module\"");
                     }
+                    Matcher m = INJECTED_ENTRYPOINT.matcher(json);
+                    if (m.find()) {
+                        score += 30;
+                        findings.add("Entrypoint zeigt auf eingeschleuste Klasse: " + m.group(1));
+                    }
                 } else if (!isHarmlessResource(name) && entry.getSize() >= PAYLOAD_MIN_SIZE) {
                     double entropy;
                     try (InputStream in = zip.getInputStream(entry)) {
@@ -109,6 +138,14 @@ public final class ModScanner {
             }
         }
 
+        if (!injectedClasses.isEmpty()) {
+            score += 20;
+            findings.add("Klassen direkt in com/github/ (typisch fuer eingeschleusten Code): " + injectedClasses);
+        }
+        if (!encryptedClasses.isEmpty()) {
+            score += 40;
+            findings.add("SilentNet-String-Verschluesselung in: " + encryptedClasses);
+        }
         if (payload) {
             score += 30;
         }
@@ -132,32 +169,74 @@ public final class ModScanner {
                 || n.endsWith(".otf") || n.endsWith(".nbt") || n.endsWith(".mcmeta");
     }
 
-    /** Liest alle UTF8-Eintraege aus dem Constant Pool einer .class-Datei. */
-    static Set<String> constantPoolStrings(byte[] bytes) throws IOException {
-        Set<String> out = new HashSet<>();
+    /** Liest UTF8-Eintraege und String-Literale aus dem Constant Pool einer .class-Datei. */
+    static ClassInfo readClass(byte[] bytes) throws IOException {
+        Set<String> utf8 = new HashSet<>();
+        List<String> literals = new ArrayList<>();
         DataInputStream in = new DataInputStream(new ByteArrayInputStream(bytes));
         if (in.readInt() != 0xCAFEBABE) {
-            return out;
+            return new ClassInfo(utf8, literals);
         }
         in.readUnsignedShort();
         in.readUnsignedShort();
         int count = in.readUnsignedShort();
+        String[] utfByIndex = new String[count];
+        List<Integer> stringRefs = new ArrayList<>();
         for (int i = 1; i < count; i++) {
             int tag = in.readUnsignedByte();
             switch (tag) {
-                case 1 -> out.add(in.readUTF());
+                case 1 -> {
+                    utfByIndex[i] = in.readUTF();
+                    utf8.add(utfByIndex[i]);
+                }
                 case 3, 4 -> in.skipNBytes(4);
                 case 5, 6 -> {
                     in.skipNBytes(8);
                     i++;
                 }
-                case 7, 8, 16, 19, 20 -> in.skipNBytes(2);
+                case 8 -> stringRefs.add(in.readUnsignedShort());
+                case 7, 16, 19, 20 -> in.skipNBytes(2);
                 case 9, 10, 11, 12, 17, 18 -> in.skipNBytes(4);
                 case 15 -> in.skipNBytes(3);
                 default -> throw new IOException("Unbekannter Constant-Pool-Tag " + tag);
             }
         }
-        return out;
+        for (int ref : stringRefs) {
+            if (ref > 0 && ref < count && utfByIndex[ref] != null) {
+                literals.add(utfByIndex[ref]);
+            }
+        }
+        return new ClassInfo(utf8, literals);
+    }
+
+    /**
+     * Zaehlt Literale in der Form der SilentNet-Verschluesselung: das erste oder letzte Zeichen ist eine kleine
+     * Schluessellaenge (1-31), der Rest besteht ueberwiegend aus Zeichen jenseits von Latin-1.
+     */
+    static int countEncryptedLiterals(List<String> literals) {
+        int n = 0;
+        for (String s : literals) {
+            if (s.length() < 4) {
+                continue;
+            }
+            char first = s.charAt(0);
+            char last = s.charAt(s.length() - 1);
+            boolean keyMarker = (first >= 1 && first < 32 && first < s.length() - 1)
+                    || (last >= 1 && last < 32 && last < s.length() - 1);
+            if (!keyMarker) {
+                continue;
+            }
+            int high = 0;
+            for (int i = 0; i < s.length(); i++) {
+                if (s.charAt(i) >= 0x100) {
+                    high++;
+                }
+            }
+            if (high * 2 >= s.length() - 1) {
+                n++;
+            }
+        }
+        return n;
     }
 
     static double entropy(byte[] data) {
