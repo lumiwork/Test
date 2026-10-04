@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dino Run · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'dino', title: 'Dino Run', hint: 'Tap to jump over cacti and low-flying birds. Hold a little longer for a higher jump. It keeps getting faster.' });
+  var ctx = A.ctx, W = 1, H = 1, S = 1;
+  var d = { x: 0, y: 0, vy: 0, w: 38, h: 44, ground: true, leg: 0 }, obs = [], clouds = [], pebbles = [];
+  var running = false, dist = 0, spawnX = 0, holdT = 0, holding = false, dead = false;
+  function gY() { return H * 0.74; }
+  A.onResize(function (w, h) { W = w; H = h; S = Math.max(0.6, Math.min(w / 360, h / 640)); d.w = 38 * S; d.h = 44 * S; d.x = w * 0.16; if (!running) d.y = gY() - d.h; clouds = []; for (var i = 0; i < 5; i++) clouds.push({ x: Math.random() * w, y: Arcade.rand(h * 0.1, h * 0.5), w: Arcade.rand(50, 110) * S }); pebbles = []; for (i = 0; i < 24; i++) pebbles.push({ x: Math.random() * w, y: gY() + Arcade.rand(8, 40) * S, w: Arcade.rand(3, 9) * S }); });
+  function speed() { return (270 + Math.min(dist / 40, 330)) * S; }
+  function reset() { obs = []; dist = 0; running = true; dead = false; d.y = gY() - d.h; d.vy = 0; d.ground = true; spawnX = W + 200 * S; A.setScore(0); }
+  function jump() { if (!running || !d.ground) return; d.vy = -700 * S; d.ground = false; holdT = 0; A.sfx('jump'); }
+  function spawn() {
+    var bird = A.score > 120 && Math.random() < 0.28;
+    if (bird) obs.push({ bird: true, x: spawnX, w: 34 * S, h: 20 * S, y: gY() - Arcade.rand(44, 64) * S, ph: 0 });
+    else { var n = Arcade.randInt(1, A.score > 60 ? 3 : 2), x = spawnX; for (var i = 0; i < n; i++) { var h = Arcade.rand(30, 56) * S, w = 18 * S; obs.push({ x: x, w: w, h: h, y: gY() - h }); x += w + 6 * S; } }
+    spawnX += (Arcade.rand(300, 560) + Math.min(dist / 60, 260)) * S;
+  }
+  function update(dt) {
+    var v = speed();
+    for (var i = 0; i < clouds.length; i++) { clouds[i].x -= v * 0.15 * dt; if (clouds[i].x + clouds[i].w < 0) { clouds[i].x = W + 20; clouds[i].y = Arcade.rand(H * 0.1, H * 0.5); } }
+    for (i = 0; i < pebbles.length; i++) { pebbles[i].x -= v * dt; if (pebbles[i].x < -10) pebbles[i].x = W + Math.random() * 40; }
+    if (!running) return;
+    dist += v * dt; var sc = Math.floor(dist / (12 * S)); if (sc !== A.score) { A.setScore(sc); if (sc % 100 === 0 && sc) { A.sfx('score'); A.flashHud('score'); } }
+    d.leg += dt * 14;
+    if (!d.ground) { holdT += dt; var g = (holding && d.vy < 0 && holdT < 0.18) ? 1100 : 2300; d.vy += g * S * dt; d.y += d.vy * dt; if (d.y >= gY() - d.h) { d.y = gY() - d.h; d.vy = 0; d.ground = true; } }
+    spawnX -= v * dt;
+    while (spawnX < W + 100 * S) spawn();
+    for (i = obs.length - 1; i >= 0; i--) {
+      var o = obs[i]; o.x -= v * dt; if (o.bird) { o.ph += dt * 10; o.x -= 40 * S * dt; }
+      if (o.x + o.w < -20) { obs.splice(i, 1); continue; }
+      var pad = 7 * S;
+      if (d.x + pad < o.x + o.w && d.x + d.w - pad > o.x && d.y + pad < o.y + o.h && d.y + d.h - pad > o.y) { running = false; dead = true; A.sfx('hit'); A.buzz(90); setTimeout(function () { A.gameOver(); }, 450); }
+    }
+  }
+  function draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, W, H);
+    for (var i = 0; i < clouds.length; i++) { var c = clouds[i]; ctx.fillStyle = 'rgba(255,255,255,.06)'; rr(c.x, c.y, c.w, c.w * 0.32, c.w * 0.16); ctx.fill(); }
+    var gy = gY();
+    ctx.fillStyle = '#1d1935'; ctx.fillRect(0, gy, W, H - gy);
+    ctx.fillStyle = '#a39bc4'; ctx.fillRect(0, gy, W, 2);
+    ctx.fillStyle = '#2c2750'; for (i = 0; i < pebbles.length; i++) ctx.fillRect(pebbles[i].x, pebbles[i].y, pebbles[i].w, 2 * S);
+    for (i = 0; i < obs.length; i++) {
+      var o = obs[i];
+      if (o.bird) {
+        var fl = Math.sin(o.ph) * 8 * S, cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+        ctx.fillStyle = '#ff5c7a';
+        ctx.beginPath(); ctx.moveTo(o.x, cy); ctx.lineTo(cx, cy - fl); ctx.lineTo(cx + 4 * S, cy); ctx.lineTo(cx, cy + 5 * S); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(o.x + o.w, cy); ctx.lineTo(cx, cy - fl); ctx.lineTo(cx - 4 * S, cy); ctx.lineTo(cx, cy + 5 * S); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffd84d'; ctx.fillRect(o.x - 4 * S, cy - 1, 5 * S, 2 * S);
+      } else {
+        ctx.fillStyle = '#37e0c2'; rr(o.x, o.y, o.w, o.h, 5 * S); ctx.fill();
+        if (o.h > 40 * S) { rr(o.x - 7 * S, o.y + o.h * 0.3, 8 * S, o.h * 0.3, 3 * S); ctx.fill(); rr(o.x + o.w - 1, o.y + o.h * 0.2, 8 * S, o.h * 0.3, 3 * S); ctx.fill(); }
+      }
+    }
+    // dino
+    var x = d.x, y = d.y, w = d.w, h = d.h;
+    ctx.fillStyle = dead ? '#8a86a0' : '#ffb648';
+    rr(x, y + h * 0.3, w * 0.75, h * 0.5, 6 * S); ctx.fill();
+    rr(x + w * 0.45, y, w * 0.55, h * 0.42, 6 * S); ctx.fill();
+    ctx.fillRect(x - w * 0.2, y + h * 0.45, w * 0.3, h * 0.14);
+    var legA = d.ground && running ? Math.sin(d.leg) : 0;
+    ctx.fillRect(x + w * 0.12, y + h * 0.78, w * 0.16, h * 0.22 - legA * 4 * S);
+    ctx.fillRect(x + w * 0.45, y + h * 0.78, w * 0.16, h * 0.22 + legA * 4 * S);
+    ctx.fillStyle = '#120f22'; ctx.beginPath(); ctx.arc(x + w * 0.78, y + h * 0.14, 3 * S, 0, 6.283); ctx.fill();
+    if (dead) { ctx.strokeStyle = '#120f22'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + w * 0.72, y + h * 0.08); ctx.lineTo(x + w * 0.84, y + h * 0.2); ctx.moveTo(x + w * 0.84, y + h * 0.08); ctx.lineTo(x + w * 0.72, y + h * 0.2); ctx.stroke(); }
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  A.input({ down: function () { holding = true; jump(); }, up: function () { holding = false; } });
+  A.onKey(function (k) { if (k === ' ' || k === 'ArrowUp') { holding = true; jump(); } });
+  window.addEventListener('keyup', function () { holding = false; });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { update(dt); draw(); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

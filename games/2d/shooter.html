@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Star Shooter · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'shooter', title: 'Star Shooter', hint: 'Drag to steer your ship. It fires on its own. Dodge enemy shots and ships. Three lives.', hud: { score: 'Score', lives: 'Lives', best: 'Best' } });
+  var ctx = A.ctx, W = 1, H = 1, S = 1;
+  var ship = { x: 0, y: 0, tx: 0 }, bullets = [], enemies = [], ebullets = [], parts = [], stars = [];
+  var running = false, lives = 3, t = 0, fireT = 0, spawnT = 0, inv = 0, dying = false;
+  A.onResize(function (w, h) { W = w; H = h; S = Math.max(0.6, Math.min(w / 360, h / 640)); ship.y = h - 70 * S; stars = []; for (var i = 0; i < 70; i++) stars.push({ x: Math.random() * w, y: Math.random() * h, z: Math.random() < 0.3 ? 2 : 1 }); });
+  function reset() { bullets = []; enemies = []; ebullets = []; parts = []; lives = 3; t = 0; fireT = 0; spawnT = 1; inv = 1; dying = false; running = true; ship.x = ship.tx = W / 2; A.setScore(0); A.setHud('lives', lives); }
+  function spawn() {
+    var tank = t > 14 && Math.random() < 0.22;
+    enemies.push({ x: Arcade.rand(30 * S, W - 30 * S), y: -30 * S, vy: (55 + Math.min(t, 60) * 1.6) * S * (tank ? 0.7 : 1), hp: tank ? 3 : 1, tank: tank, ph: Math.random() * 6.28, amp: Arcade.rand(20, 70) * S, bx: 0, r: (tank ? 20 : 14) * S, shootT: Arcade.rand(0.8, 2.2) });
+  }
+  function explode(x, y, color, n) { for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, v = Arcade.rand(40, 220) * S; parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: Arcade.rand(0.3, 0.7), c: color }); } }
+  function hurt() {
+    if (inv > 0 || !running) return;
+    lives--; A.setHud('lives', lives); explode(ship.x, ship.y, '#ffb648', 24); A.sfx('hit'); A.buzz(90); inv = 1.8;
+    if (lives <= 0) { running = false; dying = true; setTimeout(function () { A.gameOver(); }, 700); }
+  }
+  function update(dt) {
+    for (var i = 0; i < stars.length; i++) { var st = stars[i]; st.y += (40 * st.z + (running ? 60 : 0)) * S * dt; if (st.y > H) { st.y = -2; st.x = Math.random() * W; } }
+    for (i = parts.length - 1; i >= 0; i--) { var p = parts[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.life <= 0) parts.splice(i, 1); }
+    if (!running) return;
+    t += dt; inv = Math.max(0, inv - dt);
+    ship.x += (ship.tx - ship.x) * Math.min(1, dt * 18);
+    fireT -= dt; if (fireT <= 0) { fireT = 0.2; bullets.push({ x: ship.x, y: ship.y - 18 * S }); A.sfx('blip'); }
+    spawnT -= dt; if (spawnT <= 0) { spawn(); spawnT = Math.max(0.33, 1.1 - t * 0.012); }
+    for (i = bullets.length - 1; i >= 0; i--) { bullets[i].y -= 560 * S * dt; if (bullets[i].y < -10) bullets.splice(i, 1); }
+    for (i = ebullets.length - 1; i >= 0; i--) { var eb = ebullets[i]; eb.y += eb.vy * dt; eb.x += eb.vx * dt; if (eb.y > H + 10 || eb.x < -10 || eb.x > W + 10) { ebullets.splice(i, 1); continue; } if (Math.hypot(eb.x - ship.x, eb.y - ship.y) < 14 * S) { ebullets.splice(i, 1); hurt(); } }
+    for (i = enemies.length - 1; i >= 0; i--) {
+      var e = enemies[i]; e.y += e.vy * dt; e.ph += dt * 2.2; e.bx = Math.sin(e.ph) * e.amp;
+      var ex = Arcade.clamp(e.x + e.bx, 16 * S, W - 16 * S);
+      e.shootT -= dt; if (e.shootT <= 0) { e.shootT = Arcade.rand(1.2, 3) - Math.min(t, 50) * 0.012; var dx = ship.x - ex, dy = ship.y - e.y, m = Math.hypot(dx, dy) || 1, sp = (170 + Math.min(t, 60) * 1.5) * S; ebullets.push({ x: ex, y: e.y + e.r, vx: dx / m * sp * 0.5, vy: Math.max(sp * 0.7, dy / m * sp) }); }
+      if (e.y > H + 30 * S) { enemies.splice(i, 1); continue; }
+      if (Math.hypot(ex - ship.x, e.y - ship.y) < e.r + 12 * S) { enemies.splice(i, 1); explode(ex, e.y, '#ff5c7a', 14); hurt(); continue; }
+      for (var j = bullets.length - 1; j >= 0; j--) {
+        var b = bullets[j];
+        if (Math.abs(b.x - ex) < e.r && Math.abs(b.y - e.y) < e.r) {
+          bullets.splice(j, 1); e.hp--;
+          if (e.hp <= 0) { enemies.splice(i, 1); A.setScore(A.score + (e.tank ? 30 : 10)); A.flashHud('score'); explode(ex, e.y, e.tank ? '#c04dff' : '#ff5c7a', e.tank ? 22 : 12); A.sfx('score'); } else { A.sfx('tap'); }
+          break;
+        }
+      }
+    }
+  }
+  function draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, W, H);
+    for (var i = 0; i < stars.length; i++) { var st = stars[i]; ctx.fillStyle = st.z === 2 ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.35)'; ctx.fillRect(st.x, st.y, st.z, st.z * 2); }
+    ctx.fillStyle = '#37e0c2'; for (i = 0; i < bullets.length; i++) ctx.fillRect(bullets[i].x - 2 * S, bullets[i].y - 8 * S, 4 * S, 14 * S);
+    for (i = 0; i < ebullets.length; i++) { ctx.fillStyle = '#ffb648'; ctx.beginPath(); ctx.arc(ebullets[i].x, ebullets[i].y, 4 * S, 0, 6.283); ctx.fill(); }
+    for (i = 0; i < enemies.length; i++) {
+      var e = enemies[i], ex = Arcade.clamp(e.x + e.bx, 16 * S, W - 16 * S), r = e.r;
+      ctx.fillStyle = e.tank ? '#c04dff' : '#ff5c7a';
+      ctx.beginPath(); ctx.moveTo(ex, e.y + r); ctx.lineTo(ex + r, e.y - r * 0.4); ctx.lineTo(ex + r * 0.35, e.y - r * 0.9); ctx.lineTo(ex - r * 0.35, e.y - r * 0.9); ctx.lineTo(ex - r, e.y - r * 0.4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#120f22'; ctx.beginPath(); ctx.arc(ex, e.y - r * 0.1, r * 0.25, 0, 6.283); ctx.fill();
+    }
+    for (i = 0; i < parts.length; i++) { var p = parts[i]; ctx.globalAlpha = Math.max(0, p.life * 1.6); ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 3 * S, 3 * S); } ctx.globalAlpha = 1;
+    if (!dying && (inv <= 0 || Math.floor(inv * 10) % 2 === 0)) {
+      var x = ship.x, y = ship.y;
+      ctx.fillStyle = '#ffb648'; ctx.beginPath(); ctx.moveTo(x, y - 20 * S); ctx.lineTo(x + 15 * S, y + 14 * S); ctx.lineTo(x, y + 6 * S); ctx.lineTo(x - 15 * S, y + 14 * S); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f2eefc'; ctx.beginPath(); ctx.arc(x, y - 2 * S, 4 * S, 0, 6.283); ctx.fill();
+      if (running) { ctx.fillStyle = 'rgba(55,224,194,' + (0.5 + Math.random() * 0.5) + ')'; ctx.beginPath(); ctx.moveTo(x - 5 * S, y + 10 * S); ctx.lineTo(x, y + (20 + Math.random() * 10) * S); ctx.lineTo(x + 5 * S, y + 10 * S); ctx.closePath(); ctx.fill(); }
+    }
+  }
+  A.input({ down: function (x) { ship.tx = Arcade.clamp(x, 16 * S, W - 16 * S); }, move: function (x) { ship.tx = Arcade.clamp(x, 16 * S, W - 16 * S); } });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { if (running) { if (A.keys.ArrowLeft) ship.tx = Arcade.clamp(ship.tx - 420 * S * dt, 16 * S, W - 16 * S); if (A.keys.ArrowRight) ship.tx = Arcade.clamp(ship.tx + 420 * S * dt, 16 * S, W - 16 * S); } update(dt); draw(); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

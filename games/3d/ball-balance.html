@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ball Balance · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../lib/three.min.js"></script>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'ball', title: 'Ball Balance', dim: '3d', canvas: false, hint: 'Drag to tilt the platform and roll the ball into the gems. Holes open up as you score. Roll off the edge and it is over.' });
+  var T = THREE, R = Arcade.three(A, { fov: 55, bg: 0x120f22, shadows: true }), scene = R.scene, camera = R.camera;
+  scene.add(new T.HemisphereLight(0xffffff, 0x2a2050, 0.8));
+  var sun = new T.DirectionalLight(0xffffff, 0.9); sun.position.set(5, 12, 4); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -8; sun.shadow.camera.right = 8; sun.shadow.camera.top = 8; sun.shadow.camera.bottom = -8; scene.add(sun);
+  var HALF = 5, board = new T.Group(); scene.add(board);
+  var plate = new T.Mesh(new T.BoxGeometry(HALF * 2, 0.5, HALF * 2), new T.MeshLambertMaterial({ color: 0x3a3366 })); plate.receiveShadow = true; board.add(plate);
+  var grid = new T.GridHelper(HALF * 2, 10, 0x37e0c2, 0x5a52a0); grid.position.y = 0.3; board.add(grid);
+  var rim = new T.Mesh(new T.BoxGeometry(HALF * 2 + 0.6, 0.3, HALF * 2 + 0.6), new T.MeshLambertMaterial({ color: 0x1d1935 })); rim.position.y = -0.25; board.add(rim);
+  var ball = new T.Mesh(new T.SphereGeometry(0.4, 24, 18), new T.MeshLambertMaterial({ color: 0xffb648 })); ball.castShadow = true; ball.position.y = 0.65; board.add(ball);
+  var gemGeo = new T.OctahedronGeometry(0.38), gemMat = new T.MeshLambertMaterial({ color: 0x37e0c2, emissive: 0x0a3d33 }), holeGeo = new T.CircleGeometry(0.62, 24), holeMat = new T.MeshBasicMaterial({ color: 0x05030c });
+  var gems = [], holes = [], tilt = { x: 0, z: 0 }, want = { x: 0, z: 0 }, vel = { x: 0, z: 0 }, running = false, falling = false, fallV = 0, t = 0;
+  camera.position.set(0, 18, 12.5); camera.lookAt(0, -0.5, 0);
+  function farFrom(x, z, list, d) { for (var i = 0; i < list.length; i++) if (Math.hypot(list[i].position.x - x, list[i].position.z - z) < d) return false; return true; }
+  function spot(minBall) { for (var k = 0; k < 40; k++) { var x = Arcade.rand(-HALF + 0.9, HALF - 0.9), z = Arcade.rand(-HALF + 0.9, HALF - 0.9); if (Math.hypot(x - ball.position.x, z - ball.position.z) > minBall && farFrom(x, z, holes, 1.6) && farFrom(x, z, gems, 1.5)) return { x: x, z: z }; } return { x: 0, z: 0 }; }
+  function addGem() { var p = spot(2), g = new T.Mesh(gemGeo, gemMat); g.position.set(p.x, 0.7, p.z); g.castShadow = true; board.add(g); gems.push(g); }
+  function addHole() { var p = spot(2.5), h = new T.Mesh(holeGeo, holeMat); h.rotation.x = -Math.PI / 2; h.position.set(p.x, 0.27, p.z); board.add(h); holes.push(h); }
+  function reset() {
+    gems.concat(holes).forEach(function (m) { board.remove(m); }); gems = []; holes = [];
+    tilt.x = tilt.z = want.x = want.z = vel.x = vel.z = 0; ball.position.set(0, 0.65, 0); running = true; falling = false; fallV = 0; t = 0; A.setScore(0); addGem();
+  }
+  function lose() { running = false; falling = true; fallV = 0; A.sfx('hit'); A.buzz(90); setTimeout(function () { A.gameOver(); }, 900); }
+  function update(dt) {
+    t += dt;
+    for (var i = 0; i < gems.length; i++) { gems[i].rotation.y += dt * 2; gems[i].position.y = 0.75 + Math.sin(t * 3 + i) * 0.08; }
+    if (falling) { fallV += 20 * dt; ball.position.y -= fallV * dt; return; }
+    if (!running) return;
+    tilt.x += (want.x - tilt.x) * Math.min(1, dt * 8); tilt.z += (want.z - tilt.z) * Math.min(1, dt * 8);
+    board.rotation.z = -tilt.x; board.rotation.x = tilt.z;
+    vel.x += Math.sin(tilt.x) * 16 * dt; vel.z += Math.sin(tilt.z) * 16 * dt;
+    var damp = Math.max(0, 1 - 0.5 * dt); vel.x *= damp; vel.z *= damp;
+    ball.position.x += vel.x * dt; ball.position.z += vel.z * dt;
+    ball.rotation.z -= vel.x * dt / 0.4; ball.rotation.x += vel.z * dt / 0.4;
+    if (Math.abs(ball.position.x) > HALF + 0.2 || Math.abs(ball.position.z) > HALF + 0.2) { lose(); return; }
+    for (i = 0; i < holes.length; i++) if (Math.hypot(holes[i].position.x - ball.position.x, holes[i].position.z - ball.position.z) < 0.5) { ball.position.x = holes[i].position.x; ball.position.z = holes[i].position.z; lose(); return; }
+    for (i = gems.length - 1; i >= 0; i--) {
+      if (Math.hypot(gems[i].position.x - ball.position.x, gems[i].position.z - ball.position.z) < 0.8) {
+        board.remove(gems[i]); gems.splice(i, 1); A.setScore(A.score + 1); A.flashHud('score'); A.sfx('score');
+        if (A.score % 3 === 0 && holes.length < 8) addHole();
+        addGem(); if (A.score >= 6 && gems.length < 2 && Math.random() < 0.5) addGem();
+      }
+    }
+  }
+  var MAX = 0.36;
+  A.input({ move: function (x, y, dx, dy) { if (!running) return; want.x = Arcade.clamp(want.x + dx * 0.0035, -MAX, MAX); want.z = Arcade.clamp(want.z + dy * 0.0035, -MAX, MAX); } });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) {
+    if (running) { var k = 1.6 * dt; if (A.keys.ArrowLeft) want.x = Math.max(-MAX, want.x - k); if (A.keys.ArrowRight) want.x = Math.min(MAX, want.x + k); if (A.keys.ArrowUp) want.z = Math.max(-MAX, want.z - k); if (A.keys.ArrowDown) want.z = Math.min(MAX, want.z + k); }
+    update(dt); R.renderer.render(scene, camera);
+  });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

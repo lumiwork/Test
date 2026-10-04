@@ -1,0 +1,164 @@
+/* Pocket Arcade — shared shell for every game page.
+   One deliberate dark "arcade screen" look; accent flips to amber on 3D pages. */
+:root {
+  --bg: #120f22;
+  --panel: #1d1935;
+  --line: #2c2750;
+  --fg: #f2eefc;
+  --muted: #a39bc4;
+  --accent: #37e0c2;
+  --accent-ink: #06201b;
+  --accent-3d: #ffb648;
+  --accent-3d-ink: #2a1800;
+  --danger: #ff5c7a;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.3;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+body[data-dim="3d"] { --accent: var(--accent-3d); --accent-ink: var(--accent-3d-ink); }
+
+.bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 8px 6px 6px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.bar .back, .bar .mute {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+}
+.bar .back:active, .bar .mute:active { background: var(--line); }
+.bar .back:focus-visible, .bar .mute:focus-visible, .btn:focus-visible, .controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.bar h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hud {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hud span { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.hud b { color: var(--fg); font-family: var(--mono); font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.hud b.flash { color: var(--accent); }
+
+#stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  touch-action: none;
+  overflow: hidden;
+  background: var(--bg);
+}
+#stage > canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  background: rgba(18, 15, 34, .72);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+.panel {
+  width: 100%;
+  max-width: 320px;
+  padding: 22px 20px 20px;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+  text-align: center;
+}
+.panel h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; text-wrap: balance; }
+.panel .big { font-family: var(--mono); font-size: 44px; font-weight: 600; line-height: 1.1; margin: 4px 0 6px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.panel p { margin: 0 0 18px; color: var(--muted); line-height: 1.45; text-wrap: pretty; }
+.btn {
+  display: inline-block;
+  min-width: 160px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 600 17px var(--font);
+  cursor: pointer;
+}
+.btn:active { transform: translateY(1px); filter: brightness(.95); }
+
+.controls {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.controls button {
+  flex: 1;
+  min-width: 0;
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--line);
+  color: var(--fg);
+  font: 600 18px var(--font);
+  cursor: pointer;
+  touch-action: none;
+}
+.controls button.on { background: var(--accent); color: var(--accent-ink); }
+.controls button:active { filter: brightness(1.15); }
+
+/* DOM-based boards (memory, tic-tac-toe, simon) */
+.board-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 14px; }
+.board { display: grid; gap: 8px; width: 100%; max-width: 420px; }
+.board button { border: 0; cursor: pointer; padding: 0; font-family: var(--font); color: var(--fg); -webkit-tap-highlight-color: transparent; }

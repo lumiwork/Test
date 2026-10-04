@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whack-a-Mole · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'whack', title: 'Whack-a-Mole', hint: 'You have 30 seconds. Tap every mole the moment it pops up. They get quicker as time runs out.', hud: { score: 'Score', time: 'Time', best: 'Best' } });
+  var ctx = A.ctx, W = 1, H = 1, size = 100, gx = 0, gy = 0, ROUND = 30;
+  var moles = [], running = false, timeLeft = ROUND, elapsed = 0, spawnT = 0, bonks = [];
+  A.onResize(function (w, h) { W = w; H = h; size = Math.floor(Math.min((w - 24) / 3, (h - 60) / 3)); gx = Math.floor((w - size * 3) / 2); gy = Math.floor((h - size * 3) / 2) + 10; });
+  function reset() { moles = []; for (var i = 0; i < 9; i++) moles.push({ state: 'down', t: 0, p: 0, upFor: 1 }); running = true; timeLeft = ROUND; elapsed = 0; spawnT = 0.6; bonks = []; A.setScore(0); A.setHud('time', ROUND); }
+  function popOne() {
+    var free = []; for (var i = 0; i < 9; i++) if (moles[i].state === 'down' && moles[i].p <= 0) free.push(i);
+    if (!free.length) return;
+    var m = moles[Arcade.pick(free)]; m.state = 'up'; m.t = 0; m.upFor = Math.max(0.5, 1.25 - elapsed * 0.022);
+  }
+  function update(dt) {
+    for (var i = 0; i < 9; i++) {
+      var m = moles[i];
+      if (m.state === 'up') { m.t += dt; m.p = Math.min(1, m.p + dt * 7); if (m.t >= m.upFor) m.state = 'down'; }
+      else if (m.state === 'hit') { m.t += dt; if (m.t > 0.22) { m.state = 'down'; m.p = 0; } }
+      else { m.p = Math.max(0, m.p - dt * 7); }
+    }
+    for (i = bonks.length - 1; i >= 0; i--) { bonks[i].t += dt; if (bonks[i].t > 0.4) bonks.splice(i, 1); }
+    if (!running) return;
+    elapsed += dt; timeLeft -= dt; A.setHud('time', Math.max(0, Math.ceil(timeLeft)));
+    spawnT -= dt;
+    if (spawnT <= 0) { popOne(); if (elapsed > 12 && Math.random() < 0.35) popOne(); spawnT = Math.max(0.32, 0.9 - elapsed * 0.018); }
+    if (timeLeft <= 0) { running = false; for (i = 0; i < 9; i++) moles[i].state = 'down'; A.gameOver({ text: 'Time is up.' }); }
+  }
+  function whack(x, y) {
+    if (!running) return;
+    var cx = Math.floor((x - gx) / size), cy = Math.floor((y - gy) / size);
+    if (cx < 0 || cy < 0 || cx > 2 || cy > 2) return;
+    var m = moles[cy * 3 + cx];
+    if (m.state === 'up' && m.p > 0.35) { m.state = 'hit'; m.t = 0; A.setScore(A.score + 1); A.flashHud('score'); A.sfx('score'); A.buzz(25); bonks.push({ x: gx + cx * size + size / 2, y: gy + cy * size + size * 0.35, t: 0 }); }
+    else A.sfx('blip');
+  }
+  function draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#1b2a22'; rr(gx - 8, gy - 8, size * 3 + 16, size * 3 + 16, 18); ctx.fill();
+    for (var i = 0; i < 9; i++) {
+      var m = moles[i], x = gx + (i % 3) * size + size / 2, y = gy + ((i / 3) | 0) * size + size * 0.72;
+      ctx.fillStyle = '#0d0a18'; ctx.beginPath(); ctx.ellipse(x, y, size * 0.36, size * 0.13, 0, 0, 6.283); ctx.fill();
+      if (m.p > 0 || m.state === 'hit') {
+        ctx.save(); ctx.beginPath(); ctx.rect(x - size * 0.5, y - size * 0.9, size, size * 0.9); ctx.clip();
+        var rise = (m.state === 'hit' ? 0.55 : m.p) * size * 0.55, bw = size * 0.26, bh = size * 0.5;
+        var sq = m.state === 'hit' ? 0.6 : 1;
+        ctx.translate(x, y - rise * sq + (1 - sq) * bh * 0.4); ctx.scale(1 / sq * 0.9 + 0.1, sq);
+        ctx.fillStyle = '#9a6a3d'; rr(-bw, -bh, bw * 2, bh * 2, bw); ctx.fill();
+        ctx.fillStyle = '#c99466'; ctx.beginPath(); ctx.ellipse(0, -bh * 0.1, bw * 0.55, bh * 0.4, 0, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#120f22';
+        if (m.state === 'hit') { ctx.strokeStyle = '#120f22'; ctx.lineWidth = 2; cross(-bw * 0.4, -bh * 0.5, bw * 0.16); cross(bw * 0.4, -bh * 0.5, bw * 0.16); }
+        else { ctx.beginPath(); ctx.arc(-bw * 0.4, -bh * 0.5, bw * 0.13, 0, 6.283); ctx.arc(bw * 0.4, -bh * 0.5, bw * 0.13, 0, 6.283); ctx.fill(); }
+        ctx.fillStyle = '#ff5c7a'; ctx.beginPath(); ctx.ellipse(0, -bh * 0.3, bw * 0.2, bw * 0.14, 0, 0, 6.283); ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = '#2a4336'; ctx.beginPath(); ctx.ellipse(x, y + size * 0.02, size * 0.38, size * 0.12, 0, Math.PI * 0.05, Math.PI * 0.95); ctx.lineTo(x - size * 0.38, y + size * 0.02); ctx.closePath(); ctx.fill();
+    }
+    for (i = 0; i < bonks.length; i++) { var b = bonks[i], a = 1 - b.t / 0.4; ctx.fillStyle = 'rgba(255,216,77,' + a + ')'; ctx.font = '700 ' + Math.round(size * 0.22) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('+1', b.x, b.y - b.t * 60); }
+  }
+  function cross(x, y, r) { ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke(); }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  A.input({ down: function (x, y) { whack(x, y); } });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { update(dt); draw(); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

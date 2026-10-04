@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stack · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../lib/three.min.js"></script>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'stack', title: 'Stack', dim: '3d', canvas: false, hint: 'Tap to drop the sliding block onto the tower. Whatever hangs over the edge gets cut off. Land it perfectly to keep it whole.' });
+  var T = THREE, R = Arcade.three(A, { fov: 40, bg: 0x120f22 }), scene = R.scene, camera = R.camera;
+  scene.add(new T.HemisphereLight(0xffffff, 0x2a2050, 0.9));
+  var sun = new T.DirectionalLight(0xffffff, 0.75); sun.position.set(6, 12, 4); scene.add(sun);
+  var BH = 0.7, SIZE = 3.2, blocks = [], debris = [], cur = null, axis = 'x', dirn = 1, running = false, perfects = 0, camY = 0, camTarget = 0, speed = 3.2;
+  function color(i) { return new T.Color().setHSL(((i * 9) % 360) / 360, 0.6, 0.55); }
+  function makeBlock(w, d, x, z, y, i) { var m = new T.Mesh(new T.BoxGeometry(w, BH, d), new T.MeshLambertMaterial({ color: color(i) })); m.position.set(x, y, z); scene.add(m); return m; }
+  function clearAll() { blocks.concat(debris.map(function (q) { return q.m; })).forEach(function (m) { scene.remove(m); }); if (cur) scene.remove(cur); blocks = []; debris = []; cur = null; }
+  function reset() {
+    clearAll(); axis = 'x'; dirn = 1; perfects = 0; speed = 3.2; running = true; A.setScore(0);
+    var base = makeBlock(SIZE, SIZE, 0, 0, -BH / 2, 0); base.scale.y = 6; base.position.y = -BH * 3; blocks.push(base);
+    base.userData = { w: SIZE, d: SIZE, x: 0, z: 0, top: 0 };
+    camY = camTarget = 0; spawnNext();
+  }
+  function spawnNext() {
+    var top = blocks[blocks.length - 1].userData, i = blocks.length;
+    axis = i % 2 ? 'x' : 'z';
+    cur = makeBlock(top.w, top.d, axis === 'x' ? -5 : top.x, axis === 'z' ? -5 : top.z, top.top + BH / 2, i);
+    cur.userData = { w: top.w, d: top.d };
+    dirn = 1; speed = Math.min(7.5, 3.2 + i * 0.12);
+  }
+  function place() {
+    if (!running || !cur) return;
+    var prev = blocks[blocks.length - 1].userData, u = cur.userData;
+    var delta = axis === 'x' ? cur.position.x - prev.x : cur.position.z - prev.z;
+    var size = axis === 'x' ? u.w : u.d, overlap = size - Math.abs(delta);
+    if (overlap <= 0.02) { // missed entirely
+      running = false; debris.push({ m: cur, vy: 0, vr: Arcade.rand(-2, 2) }); cur = null; A.sfx('hit'); A.buzz(90);
+      setTimeout(function () { A.gameOver(); }, 900); return;
+    }
+    var newX = prev.x, newZ = prev.z, newW = u.w, newD = u.d;
+    if (Math.abs(delta) < 0.16) { // perfect
+      perfects++; A.sfx('win');
+      if (perfects >= 3) { if (axis === 'x') newW = Math.min(SIZE, u.w + 0.25); else newD = Math.min(SIZE, u.d + 0.25); }
+      cur.geometry.dispose(); cur.geometry = new T.BoxGeometry(newW, BH, newD);
+    } else {
+      perfects = 0; A.sfx('score');
+      var cutSize = Math.abs(delta), keepCenter = (axis === 'x' ? prev.x : prev.z) + delta / 2;
+      var cutCenter = keepCenter + Math.sign(delta) * (overlap / 2 + cutSize / 2);
+      var piece = new T.Mesh(new T.BoxGeometry(axis === 'x' ? cutSize : u.w, BH, axis === 'z' ? cutSize : u.d), cur.material);
+      piece.position.copy(cur.position); if (axis === 'x') piece.position.x = cutCenter; else piece.position.z = cutCenter;
+      scene.add(piece); debris.push({ m: piece, vy: 0, vr: Math.sign(delta) * 2 });
+      if (axis === 'x') { newW = overlap; newX = keepCenter; } else { newD = overlap; newZ = keepCenter; }
+      cur.geometry.dispose(); cur.geometry = new T.BoxGeometry(newW, BH, newD);
+    }
+    cur.position.x = newX; cur.position.z = newZ;
+    cur.userData = { w: newW, d: newD, x: newX, z: newZ, top: prev.top + BH };
+    blocks.push(cur); cur = null;
+    A.setScore(blocks.length - 1); A.flashHud('score');
+    camTarget = prev.top + BH; spawnNext();
+  }
+  function update(dt) {
+    if (cur && running) {
+      var p = cur.position; if (axis === 'x') { p.x += dirn * speed * dt; if (p.x > 5) { p.x = 5; dirn = -1; } if (p.x < -5) { p.x = -5; dirn = 1; } }
+      else { p.z += dirn * speed * dt; if (p.z > 5) { p.z = 5; dirn = -1; } if (p.z < -5) { p.z = -5; dirn = 1; } }
+    }
+    for (var i = debris.length - 1; i >= 0; i--) { var q = debris[i]; q.vy += 18 * dt; q.m.position.y -= q.vy * dt; q.m.rotation.x += q.vr * dt; if (q.m.position.y < camY - 20) { scene.remove(q.m); debris.splice(i, 1); } }
+    camY += (camTarget - camY) * Math.min(1, dt * 4);
+    camera.position.set(15, camY + 14, 15); camera.lookAt(0, camY + 1.6, 0);
+  }
+  A.input({ tap: function () { place(); } });
+  A.onKey(function (k) { if (k === ' ') place(); });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { update(dt); R.renderer.render(scene, camera); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

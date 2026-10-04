@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tic-Tac-Toe · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+<style>
+  .ttt { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+  .status { font-size: 15px; color: var(--muted); min-height: 20px; }
+  .status b { color: var(--fg); }
+  .cell { aspect-ratio: 1; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: center; transition: background .15s; }
+  .cell:active { background: var(--line); }
+  .cell svg { width: 62%; height: 62%; fill: none; stroke-width: 11; stroke-linecap: round; }
+  .cell.win { background: #1f3b36; border-color: var(--accent); }
+  .cell.x svg { stroke: var(--accent); } .cell.o svg { stroke: #ffb648; }
+</style>
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'tictactoe', title: 'Tic-Tac-Toe', hint: 'You play X against the AI. Three in a row wins. Your score is your current win streak.', hud: { score: 'Streak', best: 'Best' }, canvas: false, startLabel: 'Play' });
+  var wrap = A.boardWrap(), box = document.createElement('div'); box.className = 'ttt';
+  var status = document.createElement('div'); status.className = 'status';
+  var board = document.createElement('div'); board.className = 'board'; board.style.gridTemplateColumns = 'repeat(3, 1fr)'; board.style.maxWidth = '330px';
+  box.appendChild(status); box.appendChild(board); wrap.appendChild(box);
+  A.onResize(function (w, h) { board.style.maxWidth = Math.min(330, w - 28, h - 90) + 'px'; });
+  var LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  var cells = [], els = [], humanFirst = true, turn = 'X', running = false, streak = 0, busy = false;
+  for (var i = 0; i < 9; i++) {
+    (function (i) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'cell'; b.setAttribute('aria-label', 'Cell ' + (i + 1));
+      b.addEventListener('click', function () { human(i); });
+      els.push(b); board.appendChild(b);
+    })(i);
+  }
+  function winner(c) { for (var i = 0; i < LINES.length; i++) { var l = LINES[i]; if (c[l[0]] && c[l[0]] === c[l[1]] && c[l[0]] === c[l[2]]) return { p: c[l[0]], line: l }; } return c.indexOf('') < 0 ? { p: 'draw' } : null; }
+  function minimax(c, player, depth) {
+    var w = winner(c);
+    if (w) return w.p === 'O' ? 10 - depth : w.p === 'X' ? depth - 10 : 0;
+    var best = player === 'O' ? -Infinity : Infinity, i;
+    for (i = 0; i < 9; i++) {
+      if (c[i]) continue;
+      c[i] = player; var v = minimax(c, player === 'O' ? 'X' : 'O', depth + 1); c[i] = '';
+      if (player === 'O' ? v > best : v < best) best = v;
+    }
+    return best;
+  }
+  function bestMove() {
+    var empties = [], i;
+    for (i = 0; i < 9; i++) if (!cells[i]) empties.push(i);
+    for (i = 0; i < empties.length; i++) { cells[empties[i]] = 'O'; var w = winner(cells); cells[empties[i]] = ''; if (w && w.p === 'O') return empties[i]; }
+    if (Math.random() < 0.28) return Arcade.pick(empties);
+    var best = -Infinity, mv = empties[0];
+    for (i = 0; i < empties.length; i++) { cells[empties[i]] = 'O'; var v = minimax(cells, 'X', 0); cells[empties[i]] = ''; if (v > best) { best = v; mv = empties[i]; } }
+    return mv;
+  }
+  function render() {
+    for (var i = 0; i < 9; i++) {
+      var v = cells[i]; els[i].className = 'cell' + (v ? ' ' + v.toLowerCase() : '');
+      els[i].innerHTML = v === 'X' ? '<svg viewBox="0 0 100 100"><path d="M20 20 L80 80 M80 20 L20 80"/></svg>' : v === 'O' ? '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32"/></svg>' : '';
+    }
+  }
+  function place(i, p) { cells[i] = p; render(); A.sfx('tap'); var w = winner(cells); if (w) finish(w); else { turn = p === 'X' ? 'O' : 'X'; if (turn === 'O') aiTurn(); else status.innerHTML = '<b>Your turn</b>'; } }
+  function aiTurn() { busy = true; status.textContent = 'AI is thinking…'; setTimeout(function () { if (!running) return; place(bestMove(), 'O'); busy = false; }, 420); }
+  function human(i) { if (!running || busy || turn !== 'X' || cells[i]) return; place(i, 'X'); }
+  function finish(w) {
+    running = false;
+    if (w.p !== 'draw') { for (var k = 0; k < 3; k++) els[w.line[k]].classList.add('win'); }
+    var title, text;
+    if (w.p === 'X') { streak++; A.setScore(streak); A.flashHud('score'); A.updateBest(streak); title = 'You win!'; text = 'Streak ' + streak + '. Best ' + A.best + '.'; A.sfx('win'); }
+    else if (w.p === 'O') { title = 'AI wins'; text = streak ? 'Your streak of ' + streak + ' ends here.' : 'Better luck next round.'; streak = 0; A.setScore(0); A.sfx('over'); }
+    else { title = 'Draw'; text = 'Nobody wins. Streak stays at ' + streak + '.'; A.sfx('tap'); }
+    status.textContent = title;
+    setTimeout(function () { A.show({ title: title, text: text, button: 'Next round', onButton: round }); }, 700);
+  }
+  function round() { cells = ['', '', '', '', '', '', '', '', '']; render(); running = true; busy = false; humanFirst = !humanFirst; turn = 'X'; if (!humanFirst) { aiTurn(); } else status.innerHTML = '<b>Your turn</b>'; }
+  A.onStart(function () { streak = 0; A.setScore(0); humanFirst = false; round(); });
+  cells = ['', '', '', '', '', '', '', '', '']; render(); status.textContent = '';
+  A.showStart();
+})();
+</script>
+</body>
+</html>

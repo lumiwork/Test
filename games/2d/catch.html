@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fruit Catch · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'catch', title: 'Fruit Catch', hint: 'Drag to move the basket. Catch the fruit, never the bombs. Three misses and the game is over.', hud: { score: 'Score', lives: 'Lives', best: 'Best' } });
+  var ctx = A.ctx, W = 1, H = 1, S = 1;
+  var basket = { x: 0, tx: 0, w: 80, h: 28, y: 0 }, items = [], parts = [], running = false, lives = 3, t = 0, spawnT = 0, shake = 0;
+  var TYPES = [{ c: '#ff5c7a', pts: 1, r: 14 }, { c: '#ffb648', pts: 1, r: 14 }, { c: '#5ce06a', pts: 1, r: 12 }, { c: '#c04dff', pts: 3, r: 10 }];
+  A.onResize(function (w, h) { W = w; H = h; S = Math.max(0.6, Math.min(w / 360, h / 640)); basket.w = 82 * S; basket.h = 28 * S; basket.y = h - 54 * S; });
+  function reset() { items = []; parts = []; lives = 3; t = 0; spawnT = 0.5; running = true; basket.x = basket.tx = W / 2; A.setScore(0); A.setHud('lives', lives); }
+  function spawn() {
+    var bomb = t > 6 && Math.random() < Math.min(0.28, 0.1 + t * 0.004);
+    var ty = bomb ? null : (Math.random() < 0.12 ? TYPES[3] : TYPES[Arcade.randInt(0, 2)]);
+    items.push({ x: Arcade.rand(24 * S, W - 24 * S), y: -24 * S, vy: (150 + Math.min(t, 80) * 3.2) * S * Arcade.rand(0.85, 1.15), bomb: bomb, ty: ty, r: (bomb ? 13 : ty.r) * S, rot: Math.random() * 6.28, vr: Arcade.rand(-2, 2) });
+  }
+  function burst(x, y, c, n) { for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, v = Arcade.rand(50, 200) * S; parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80 * S, life: Arcade.rand(0.3, 0.6), c: c }); } }
+  function loseLife(x, y) { lives--; A.setHud('lives', lives); A.sfx('hit'); A.buzz(80); shake = 0.3; burst(x, y, '#ff5c7a', 14); if (lives <= 0) { running = false; setTimeout(function () { A.gameOver(); }, 500); } }
+  function update(dt) {
+    shake = Math.max(0, shake - dt);
+    for (var i = parts.length - 1; i >= 0; i--) { var p = parts[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 500 * S * dt; if (p.life <= 0) parts.splice(i, 1); }
+    if (!running) return;
+    t += dt; basket.x += (basket.tx - basket.x) * Math.min(1, dt * 16);
+    spawnT -= dt; if (spawnT <= 0) { spawn(); spawnT = Math.max(0.32, 0.95 - t * 0.011); }
+    for (i = items.length - 1; i >= 0; i--) {
+      var it = items[i]; it.y += it.vy * dt; it.rot += it.vr * dt;
+      var inX = Math.abs(it.x - basket.x) < basket.w / 2 + it.r * 0.3;
+      if (it.y + it.r >= basket.y && it.y < basket.y + basket.h && inX) {
+        items.splice(i, 1);
+        if (it.bomb) loseLife(it.x, it.y);
+        else { A.setScore(A.score + it.ty.pts); A.flashHud('score'); A.sfx('score'); burst(it.x, basket.y, it.ty.c, 8); }
+        continue;
+      }
+      if (it.y - it.r > H) { items.splice(i, 1); if (!it.bomb) loseLife(it.x, H - 10); }
+    }
+  }
+  function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate(Arcade.rand(-6, 6) * shake, Arcade.rand(-6, 6) * shake);
+    ctx.fillStyle = '#120f22'; ctx.fillRect(-10, -10, W + 20, H + 20);
+    ctx.fillStyle = '#1d1935'; ctx.fillRect(0, H - 22 * S, W, 22 * S);
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot);
+      if (it.bomb) {
+        ctx.fillStyle = '#2c2750'; ctx.beginPath(); ctx.arc(0, 0, it.r, 0, 6.283); ctx.fill();
+        ctx.strokeStyle = '#a39bc4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -it.r); ctx.quadraticCurveTo(it.r * 0.6, -it.r * 1.4, it.r * 0.9, -it.r * 1.2); ctx.stroke();
+        ctx.fillStyle = Math.random() < 0.5 ? '#ffd84d' : '#ff5c7a'; ctx.beginPath(); ctx.arc(it.r * 0.9, -it.r * 1.2, 3 * S, 0, 6.283); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.arc(-it.r * 0.3, -it.r * 0.3, it.r * 0.35, 0, 6.283); ctx.fill();
+      } else {
+        ctx.fillStyle = it.ty.c; ctx.beginPath(); ctx.arc(0, 0, it.r, 0, 6.283); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.beginPath(); ctx.arc(-it.r * 0.35, -it.r * 0.35, it.r * 0.3, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#5ce06a'; ctx.beginPath(); ctx.ellipse(it.r * 0.3, -it.r * 0.95, it.r * 0.4, it.r * 0.18, -0.6, 0, 6.283); ctx.fill();
+      }
+      ctx.restore();
+    }
+    for (i = 0; i < parts.length; i++) { var p = parts[i]; ctx.globalAlpha = Math.max(0, p.life * 1.8); ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 4 * S, 4 * S); } ctx.globalAlpha = 1;
+    var bx = basket.x, by = basket.y, bw = basket.w, bh = basket.h;
+    ctx.fillStyle = '#b8742e'; ctx.beginPath(); ctx.moveTo(bx - bw / 2, by); ctx.lineTo(bx + bw / 2, by); ctx.lineTo(bx + bw / 2 - 10 * S, by + bh); ctx.lineTo(bx - bw / 2 + 10 * S, by + bh); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 2; for (var k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(bx - bw / 2 + k * bw / 4, by); ctx.lineTo(bx - bw / 2 + 10 * S + k * (bw - 20 * S) / 4, by + bh); ctx.stroke(); }
+    ctx.fillStyle = '#e09a4a'; ctx.fillRect(bx - bw / 2, by - 4 * S, bw, 6 * S);
+    ctx.restore();
+  }
+  function setBasket(x) { basket.tx = Arcade.clamp(x, basket.w / 2, W - basket.w / 2); }
+  A.input({ down: function (x) { setBasket(x); }, move: function (x) { setBasket(x); } });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { if (running) { if (A.keys.ArrowLeft) setBasket(basket.tx - 460 * S * dt); if (A.keys.ArrowRight) setBasket(basket.tx + 460 * S * dt); } update(dt); draw(); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

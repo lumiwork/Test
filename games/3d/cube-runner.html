@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cube Runner · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../lib/three.min.js"></script>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'cube-runner', title: 'Cube Runner', dim: '3d', canvas: false, hint: 'Swipe or tap left and right to change lanes. Dodge the red blocks and collect the coins. The road gets faster.' });
+  var T = THREE, R = Arcade.three(A, { fov: 62, bg: 0x120f22, fog: [25, 95] }), scene = R.scene, camera = R.camera;
+  scene.add(new T.HemisphereLight(0xffffff, 0x2a2050, 0.95));
+  var sun = new T.DirectionalLight(0xffffff, 0.7); sun.position.set(4, 10, 6); scene.add(sun);
+  var LANE = 3, road = new T.Mesh(new T.BoxGeometry(LANE * 3 + 1, 0.5, 420), new T.MeshLambertMaterial({ color: 0x1d1935 })); road.position.set(0, -0.25, -160); scene.add(road);
+  [-4.9, 4.9].forEach(function (x) { var rail = new T.Mesh(new T.BoxGeometry(0.3, 0.6, 420), new T.MeshLambertMaterial({ color: 0x2c2750 })); rail.position.set(x, 0.3, -160); scene.add(rail); });
+  var dashMat = new T.MeshBasicMaterial({ color: 0x2f8f7e }), dashes = [];
+  for (var i = 0; i < 60; i++) { var d = new T.Mesh(new T.BoxGeometry(0.08, 0.02, 2.2), dashMat); d.position.set(i % 2 ? -1.5 : 1.5, 0.02, -Math.floor(i / 2) * 5); scene.add(d); dashes.push(d); }
+  var player = new T.Mesh(new T.BoxGeometry(1.2, 1.2, 1.2), new T.MeshLambertMaterial({ color: 0xffb648 })); player.position.set(0, 0.6, 0); scene.add(player);
+  var obMat = new T.MeshLambertMaterial({ color: 0xff5c7a }), coinMat = new T.MeshLambertMaterial({ color: 0xffd84d }), coinGeo = new T.CylinderGeometry(0.45, 0.45, 0.12, 20);
+  var obstacles = [], coins = [], lane = 0, dist = 0, coinsGot = 0, speed = 18, running = false, nextSpawn = 30, shake = 0, t = 0;
+  camera.position.set(0, 4.6, 8.5); camera.lookAt(0, 0.6, -5);
+
+  function clear(list) { list.forEach(function (m) { scene.remove(m); }); list.length = 0; }
+  function reset() { clear(obstacles); clear(coins); lane = 0; dist = 0; coinsGot = 0; speed = 18; nextSpawn = 30; running = true; shake = 0; player.position.set(0, 0.6, 0); player.rotation.set(0, 0, 0); A.setScore(0); }
+  function spawnWave(z) {
+    var lanes = Arcade.shuffle([-1, 0, 1]), n = Math.random() < 0.35 && dist > 150 ? 2 : 1;
+    for (var i = 0; i < n; i++) {
+      var h = Arcade.rand(1.2, 2.4), m = new T.Mesh(new T.BoxGeometry(1.7, h, 1.7), obMat); m.position.set(lanes[i] * LANE, h / 2, z); scene.add(m); obstacles.push(m);
+    }
+    if (Math.random() < 0.6) { var cl = lanes[n]; for (var k = 0; k < 3; k++) { var c = new T.Mesh(coinGeo, coinMat); c.rotation.x = Math.PI / 2; c.position.set(cl * LANE, 0.8, z - 3 - k * 1.6); scene.add(c); coins.push(c); } }
+  }
+  function die() { running = false; shake = 0.5; A.sfx('hit'); A.buzz(100); setTimeout(function () { A.gameOver({ text: coinsGot + ' coins.' }); }, 600); }
+  function update(dt) {
+    t += dt;
+    for (var i = 0; i < coins.length; i++) coins[i].rotation.z += dt * 3;
+    if (!running) { if (shake > 0) { shake -= dt; camera.position.x = Arcade.rand(-0.3, 0.3) * shake; camera.position.y = 4.6 + Arcade.rand(-0.3, 0.3) * shake; } return; }
+    speed = 18 + Math.min(dist / 45, 24);
+    var dz = speed * dt; dist += dz;
+    var tx = lane * LANE; player.position.x += (tx - player.position.x) * Math.min(1, dt * 12);
+    player.rotation.z = (tx - player.position.x) * -0.25; player.rotation.x -= dt * speed / 1.2;
+    for (i = 0; i < dashes.length; i++) { dashes[i].position.z += dz; if (dashes[i].position.z > 10) dashes[i].position.z -= 150; }
+    nextSpawn -= dz;
+    if (nextSpawn <= 0) { spawnWave(-110); nextSpawn = Arcade.rand(13, 22) - Math.min(dist / 200, 4); }
+    for (i = obstacles.length - 1; i >= 0; i--) {
+      var o = obstacles[i]; o.position.z += dz;
+      if (o.position.z > 12) { scene.remove(o); obstacles.splice(i, 1); continue; }
+      if (Math.abs(o.position.z) < 1.4 && Math.abs(o.position.x - player.position.x) < 1.4) { die(); return; }
+    }
+    for (i = coins.length - 1; i >= 0; i--) {
+      var c = coins[i]; c.position.z += dz;
+      if (c.position.z > 12) { scene.remove(c); coins.splice(i, 1); continue; }
+      if (Math.abs(c.position.z) < 1 && Math.abs(c.position.x - player.position.x) < 1.3) { scene.remove(c); coins.splice(i, 1); coinsGot++; A.sfx('score'); A.flashHud('score'); }
+    }
+    A.setScore(Math.floor(dist) + coinsGot * 10);
+    camera.position.x += (player.position.x * 0.35 - camera.position.x) * Math.min(1, dt * 5);
+  }
+  function go(dir) { if (!running) return; lane = Arcade.clamp(lane + dir, -1, 1); A.sfx('blip'); }
+  A.input({ swipe: function (d) { if (d === 'left') go(-1); else if (d === 'right') go(1); }, tap: function (x) { go(x < A.w / 2 ? -1 : 1); } });
+  A.onKey(function (k) { if (k === 'ArrowLeft' || k === 'a') go(-1); else if (k === 'ArrowRight' || k === 'd') go(1); });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { update(dt); R.renderer.render(scene, camera); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

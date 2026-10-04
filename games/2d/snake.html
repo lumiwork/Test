@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Snake · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'snake', title: 'Snake', hint: 'Swipe to steer, or tap where you want to go. Eat the apples. Walls and your own tail end the run.' });
+  var ctx = A.ctx, W = 1, H = 1, cols = 17, rows = 20, cell = 10, ox = 0, oy = 0;
+  var snake = [], dir = { x: 1, y: 0 }, queue = [], food = null, grow = 0, acc = 0, running = false, dead = false;
+
+  A.onResize(function (w, h) {
+    W = w; H = h;
+    cell = Math.max(8, Math.floor(Math.min((w - 12) / cols, (h - 12) / 24)));
+    rows = Math.max(12, Math.floor((h - 12) / cell));
+    ox = Math.floor((w - cols * cell) / 2); oy = Math.floor((h - rows * cell) / 2);
+  });
+
+  function reset() {
+    var cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
+    snake = [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }];
+    dir = { x: 1, y: 0 }; queue = []; grow = 0; acc = 0; running = true; dead = false;
+    A.setScore(0); placeFood();
+  }
+  function occupied(x, y) { for (var i = 0; i < snake.length; i++) if (snake[i].x === x && snake[i].y === y) return true; return false; }
+  function placeFood() {
+    var free = [];
+    for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) if (!occupied(x, y)) free.push({ x: x, y: y });
+    food = free.length ? Arcade.pick(free) : null;
+  }
+  function setDir(d) {
+    var last = queue.length ? queue[queue.length - 1] : dir;
+    if ((d.x === -last.x && d.y === -last.y) || (d.x === last.x && d.y === last.y)) return;
+    if (queue.length < 2) queue.push(d);
+  }
+  function interval() { return 1 / (6 + Math.min(snake.length, 45) * 0.14); }
+  function step() {
+    if (queue.length) dir = queue.shift();
+    var h = snake[0], nx = h.x + dir.x, ny = h.y + dir.y;
+    if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return die();
+    var tailMoves = grow === 0;
+    for (var i = 0; i < snake.length - (tailMoves ? 1 : 0); i++) if (snake[i].x === nx && snake[i].y === ny) return die();
+    snake.unshift({ x: nx, y: ny });
+    if (food && nx === food.x && ny === food.y) { grow += 1; A.setScore(A.score + 1); A.sfx('score'); A.flashHud('score'); placeFood(); }
+    if (grow > 0) grow--; else snake.pop();
+  }
+  function die() { running = false; dead = true; A.sfx('hit'); A.buzz(80); setTimeout(function () { A.gameOver(); }, 450); }
+
+  function draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#1a1630'; ctx.fillRect(ox, oy, cols * cell, rows * cell);
+    ctx.strokeStyle = 'rgba(255,255,255,.04)'; ctx.lineWidth = 1;
+    for (var x = 1; x < cols; x++) { ctx.beginPath(); ctx.moveTo(ox + x * cell + .5, oy); ctx.lineTo(ox + x * cell + .5, oy + rows * cell); ctx.stroke(); }
+    for (var y = 1; y < rows; y++) { ctx.beginPath(); ctx.moveTo(ox, oy + y * cell + .5); ctx.lineTo(ox + cols * cell, oy + y * cell + .5); ctx.stroke(); }
+    ctx.strokeStyle = '#2c2750'; ctx.lineWidth = 2; ctx.strokeRect(ox - 1, oy - 1, cols * cell + 2, rows * cell + 2);
+    if (food) {
+      var fx = ox + food.x * cell + cell / 2, fy = oy + food.y * cell + cell / 2;
+      ctx.fillStyle = '#ff5c7a'; ctx.beginPath(); ctx.arc(fx, fy, cell * 0.36, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#37e0c2'; ctx.fillRect(fx - 1, fy - cell * 0.5, 2, cell * 0.2);
+    }
+    for (var i = snake.length - 1; i >= 0; i--) {
+      var s = snake[i], t = i / Math.max(1, snake.length - 1);
+      ctx.fillStyle = dead ? '#8a86a0' : (i === 0 ? '#6cf0d8' : 'hsl(' + (168 - t * 60) + ',70%,' + (52 - t * 14) + '%)');
+      var pad = i === 0 ? 1 : 2, r = cell * 0.28;
+      rr(ox + s.x * cell + pad, oy + s.y * cell + pad, cell - 2 * pad, cell - 2 * pad, r); ctx.fill();
+    }
+    var hd = snake[0];
+    ctx.fillStyle = '#120f22';
+    var ex = ox + hd.x * cell + cell / 2 + dir.x * cell * 0.18, ey = oy + hd.y * cell + cell / 2 + dir.y * cell * 0.18;
+    var px = -dir.y * cell * 0.2, py = dir.x * cell * 0.2;
+    ctx.beginPath(); ctx.arc(ex + px, ey + py, cell * 0.09, 0, 6.283); ctx.arc(ex - px, ey - py, cell * 0.09, 0, 6.283); ctx.fill();
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+  A.input({
+    swipe: function (d) { if (!running) return; setDir(d === 'left' ? { x: -1, y: 0 } : d === 'right' ? { x: 1, y: 0 } : d === 'up' ? { x: 0, y: -1 } : { x: 0, y: 1 }); },
+    tap: function (x, y) {
+      if (!running) return;
+      var h = snake[0], hx = ox + h.x * cell + cell / 2, hy = oy + h.y * cell + cell / 2;
+      var dx = x - hx, dy = y - hy, cur = queue.length ? queue[queue.length - 1] : dir;
+      var horiz = Math.abs(dx) > Math.abs(dy);
+      if (horiz && cur.x !== 0) horiz = false; else if (!horiz && cur.y !== 0) horiz = true;
+      setDir(horiz ? { x: dx >= 0 ? 1 : -1, y: 0 } : { x: 0, y: dy >= 0 ? 1 : -1 });
+    }
+  });
+  A.onKey(function (k) {
+    if (!running) return;
+    if (k === 'ArrowLeft') setDir({ x: -1, y: 0 }); else if (k === 'ArrowRight') setDir({ x: 1, y: 0 });
+    else if (k === 'ArrowUp') setDir({ x: 0, y: -1 }); else if (k === 'ArrowDown') setDir({ x: 0, y: 1 });
+  });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) {
+    if (running) { acc += dt; while (acc >= interval() && running) { acc -= interval(); step(); } }
+    draw();
+  });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

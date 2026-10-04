@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZigZag · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../lib/three.min.js"></script>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'zigzag', title: 'ZigZag', dim: '3d', canvas: false, hint: 'Tap to switch the ball between its two directions. Stay on the zigzag path, grab the gems, and never fall off.' });
+  var T = THREE, R = Arcade.three(A, { fov: 42, bg: 0x120f22, fog: [26, 60] }), scene = R.scene, camera = R.camera;
+  scene.add(new T.HemisphereLight(0xffffff, 0x2a2050, 0.9));
+  var sun = new T.DirectionalLight(0xffffff, 0.7); sun.position.set(3, 10, 5); scene.add(sun);
+  var tileGeo = new T.BoxGeometry(1, 1, 1), mats = [new T.MeshLambertMaterial({ color: 0x3a3366 }), new T.MeshLambertMaterial({ color: 0x2c2750 })];
+  var gemGeo = new T.OctahedronGeometry(0.22), gemMat = new T.MeshLambertMaterial({ color: 0x37e0c2, emissive: 0x0a3d33 });
+  var ball = new T.Mesh(new T.SphereGeometry(0.3, 20, 14), new T.MeshLambertMaterial({ color: 0xffb648 })); scene.add(ball);
+  var tiles = [], gems = [], cursor = { x: 0, z: 0 }, runIdx = 0, dirZ = false, speed = 5, running = false, falling = false, fallV = 0, gemsGot = 0, t = 0, progress = 0;
+  function addTile(x, z, run) { var m = new T.Mesh(tileGeo, mats[run % 2]); m.position.set(x, -0.5, z); scene.add(m); tiles.push({ m: m, x: x, z: z, fall: 0 }); if (Math.random() < 0.16 && run > 0) { var g = new T.Mesh(gemGeo, gemMat); g.position.set(x, 0.45, z); scene.add(g); gems.push(g); } }
+  function addRun() { var len = Arcade.randInt(1, 4), alongZ = runIdx % 2 === 0; for (var i = 0; i < len; i++) { if (alongZ) cursor.z -= 1; else cursor.x -= 1; addTile(cursor.x, cursor.z, runIdx); } runIdx++; }
+  function clearAll() { tiles.forEach(function (q) { scene.remove(q.m); }); gems.forEach(function (g) { scene.remove(g); }); tiles = []; gems = []; }
+  function reset() {
+    clearAll(); cursor = { x: 0, z: 0 }; runIdx = 0; dirZ = true; speed = 5; running = true; falling = false; fallV = 0; gemsGot = 0; progress = 0;
+    for (var x = -1; x <= 1; x++) for (var z = -1; z <= 1; z++) addTile(x, z, 0);
+    cursor = { x: 0, z: -1 };
+    while (tiles.length < 40) addRun();
+    ball.position.set(0, 0.3, 0); A.setScore(0);
+    camera.position.set(9, 11, 9); camera.lookAt(0, 0, 0);
+  }
+  function onTile() { var bx = ball.position.x, bz = ball.position.z; for (var i = 0; i < tiles.length; i++) { var q = tiles[i]; if (q.fall === 0 && Math.abs(q.x - bx) < 0.5 + 0.12 && Math.abs(q.z - bz) < 0.5 + 0.12) return true; } return false; }
+  function update(dt) {
+    t += dt;
+    for (var i = 0; i < gems.length; i++) gems[i].rotation.y += dt * 3;
+    for (i = tiles.length - 1; i >= 0; i--) { var q = tiles[i]; if (q.fall > 0) { q.fall += 25 * dt; q.m.position.y -= q.fall * dt; if (q.m.position.y < -25) { scene.remove(q.m); tiles.splice(i, 1); } } }
+    if (falling) { fallV += 22 * dt; ball.position.y -= fallV * dt; }
+    else if (running) {
+      speed = 5 + Math.min(progress / 60, 4);
+      var d = speed * dt; if (dirZ) ball.position.z -= d; else ball.position.x -= d;
+      progress += d; A.setScore(Math.floor(progress) + gemsGot * 3);
+      ball.rotation.x -= dirZ ? 0 : 0; ball.rotation.z += dirZ ? 0 : d / 0.3; ball.rotation.x -= dirZ ? d / 0.3 : 0;
+      if (!onTile()) { running = false; falling = true; fallV = 0; A.sfx('hit'); A.buzz(90); setTimeout(function () { A.gameOver({ text: gemsGot + ' gems.' }); }, 800); }
+      for (i = gems.length - 1; i >= 0; i--) { if (Math.hypot(gems[i].position.x - ball.position.x, gems[i].position.z - ball.position.z) < 0.55) { scene.remove(gems[i]); gems.splice(i, 1); gemsGot++; A.sfx('score'); A.flashHud('score'); } }
+      var sum = ball.position.x + ball.position.z;
+      for (i = 0; i < tiles.length; i++) { q = tiles[i]; if (q.fall === 0 && q.x + q.z > sum + 5) q.fall = 0.01; }
+      while (cursor.x + cursor.z > sum - 26) addRun();
+      for (i = gems.length - 1; i >= 0; i--) if (gems[i].position.x + gems[i].position.z > sum + 5) { scene.remove(gems[i]); gems.splice(i, 1); }
+    }
+    var cx = ball.position.x + 9, cz = ball.position.z + 9;
+    camera.position.x += (cx - camera.position.x) * Math.min(1, dt * 5); camera.position.z += (cz - camera.position.z) * Math.min(1, dt * 5); camera.position.y = 11;
+    camera.lookAt(camera.position.x - 9, 0, camera.position.z - 9);
+  }
+  function flip() { if (!running) return; dirZ = !dirZ; A.sfx('blip'); }
+  A.input({ tap: function () { flip(); }, down: function () { } });
+  A.onKey(function (k) { if (k === ' ' || k === 'ArrowLeft' || k === 'ArrowRight') flip(); });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { update(dt); R.renderer.render(scene, camera); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

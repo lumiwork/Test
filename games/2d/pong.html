@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pong · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'pong', title: 'Pong', hint: 'Drag to move your paddle at the bottom. The AI guards the top. First to 7 points wins the match.', hud: { score: 'You', ai: 'AI', best: 'Wins' } });
+  var ctx = A.ctx, W = 1, H = 1, S = 1, TARGET = 7;
+  var me = { x: 0, y: 0, w: 90, h: 12 }, ai = { x: 0, y: 0, w: 90, h: 12, err: 0 }, ball = { x: 0, y: 0, vx: 0, vy: 0, r: 7 }, trail = [];
+  var running = false, scores = [0, 0], speed = 320, serveT = 0, rally = 0;
+  A.onResize(function (w, h) { W = w; H = h; S = Math.max(0.6, Math.min(w / 360, h / 640)); me.w = ai.w = 92 * S; me.h = ai.h = 12 * S; me.y = h - 40 * S; ai.y = 28 * S; ball.r = 7 * S; });
+  function serve(toPlayer) { ball.x = W / 2; ball.y = H / 2; speed = 300 * S; rally = 0; var ang = Arcade.rand(-0.5, 0.5); ball.vx = Math.sin(ang) * speed; ball.vy = (toPlayer ? 1 : -1) * Math.cos(ang) * speed; serveT = 0.8; ai.err = Arcade.rand(-25, 25) * S; trail = []; }
+  function reset() { scores = [0, 0]; running = true; me.x = ai.x = W / 2; A.setScore(0); A.setHud('ai', 0); serve(Math.random() < 0.5); }
+  function point(playerScored) {
+    scores[playerScored ? 0 : 1]++; A.setScore(scores[0]); A.setHud('ai', scores[1]); A.sfx(playerScored ? 'score' : 'hit'); if (!playerScored) A.buzz(60);
+    if (scores[0] >= TARGET || scores[1] >= TARGET) {
+      running = false; var won = scores[0] > scores[1];
+      if (won) A.updateBest(A.best + 1);
+      A.sfx(won ? 'win' : 'over');
+      A.show({ title: won ? 'You win the match!' : 'The AI wins', big: scores[0] + ' - ' + scores[1], text: won ? 'Matches won: ' + A.best + '.' : 'Matches won so far: ' + A.best + '.', button: 'Play again', onButton: reset });
+    } else serve(!playerScored);
+  }
+  function update(dt) {
+    if (!running) return;
+    if (serveT > 0) { serveT -= dt; return; }
+    // AI: track the ball when it heads up, drift to centre otherwise
+    var target = ball.vy < 0 ? ball.x + ai.err : W / 2, maxV = (190 + Math.min(rally, 12) * 18) * S;
+    ai.x += Arcade.clamp(target - ai.x, -maxV * dt, maxV * dt);
+    ai.x = Arcade.clamp(ai.x, ai.w / 2, W - ai.w / 2);
+    var steps = 3, sdt = dt / steps;
+    for (var s = 0; s < steps; s++) {
+      ball.x += ball.vx * sdt; ball.y += ball.vy * sdt;
+      if (ball.x - ball.r < 0) { ball.x = ball.r; ball.vx = Math.abs(ball.vx); A.sfx('blip'); }
+      if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.vx = -Math.abs(ball.vx); A.sfx('blip'); }
+      if (ball.vy > 0 && ball.y + ball.r >= me.y && ball.y - ball.r <= me.y + me.h && Math.abs(ball.x - me.x) <= me.w / 2 + ball.r) { bounce(me, -1); }
+      if (ball.vy < 0 && ball.y - ball.r <= ai.y + ai.h && ball.y + ball.r >= ai.y && Math.abs(ball.x - ai.x) <= ai.w / 2 + ball.r) { bounce(ai, 1); ai.err = Arcade.rand(-30, 30) * S * (1 + rally * 0.05); }
+      if (ball.y - ball.r > H) { point(false); return; }
+      if (ball.y + ball.r < 0) { point(true); return; }
+    }
+    trail.push({ x: ball.x, y: ball.y }); if (trail.length > 8) trail.shift();
+  }
+  function bounce(p, dir) {
+    var rel = Arcade.clamp((ball.x - p.x) / (p.w / 2), -1, 1), ang = rel * 1.0;
+    rally++; speed = Math.min(speed * 1.045, 820 * S);
+    ball.vx = Math.sin(ang) * speed; ball.vy = dir * Math.cos(ang) * speed;
+    ball.y = dir < 0 ? p.y - ball.r - 0.5 : p.y + p.h + ball.r + 0.5;
+    A.sfx('tap');
+  }
+  function draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, W, H);
+    ctx.setLineDash([10 * S, 10 * S]); ctx.strokeStyle = '#2c2750'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(163,155,196,.18)'; ctx.font = '700 ' + Math.round(90 * S) + 'px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(scores[1]), W / 2, H * 0.3); ctx.fillText(String(scores[0]), W / 2, H * 0.7);
+    for (var i = 0; i < trail.length; i++) { ctx.fillStyle = 'rgba(255,182,72,' + (i / trail.length) * 0.35 + ')'; ctx.beginPath(); ctx.arc(trail[i].x, trail[i].y, ball.r * (0.4 + 0.6 * i / trail.length), 0, 6.283); ctx.fill(); }
+    ctx.fillStyle = '#ff5c7a'; rr(ai.x - ai.w / 2, ai.y, ai.w, ai.h, 6 * S); ctx.fill();
+    ctx.fillStyle = '#37e0c2'; rr(me.x - me.w / 2, me.y, me.w, me.h, 6 * S); ctx.fill();
+    ctx.fillStyle = '#ffb648'; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, 6.283); ctx.fill();
+    if (running && serveT > 0) { ctx.fillStyle = 'rgba(242,238,252,.7)'; ctx.font = '600 15px system-ui, sans-serif'; ctx.fillText('Get ready', W / 2, H / 2 - 30 * S); }
+  }
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function setMe(x) { me.x = Arcade.clamp(x, me.w / 2, W - me.w / 2); }
+  A.input({ down: function (x) { setMe(x); }, move: function (x) { setMe(x); } });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { if (running) { if (A.keys.ArrowLeft) setMe(me.x - 460 * S * dt); if (A.keys.ArrowRight) setMe(me.x + 460 * S * dt); } update(dt); draw(); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

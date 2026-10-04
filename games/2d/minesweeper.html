@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minesweeper · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+<style>.controls button.sel { background: var(--accent); color: var(--accent-ink); }</style>
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'minesweeper', title: 'Minesweeper', hint: 'Tap to dig. Hold a cell (or switch to Flag mode) to mark a mine. Clear all safe cells. Fastest time wins.', hud: { mines: 'Mines', time: 'Time', best: 'Best' }, lowerIsBetter: true });
+  var ctx = A.ctx, W = 1, H = 1, N = 9, MINES = 10, cell = 10, ox = 0, oy = 0;
+  var cells = [], started = false, running = false, time = 0, flagMode = false, flags = 0, opened = 0, longTimer = null, longFired = false, downCell = null, lost = false;
+  var NUM = ['', '#4d8dff', '#5ce06a', '#ff5c7a', '#c04dff', '#ffb648', '#37e0c2', '#f2eefc', '#a39bc4'];
+  A.onResize(function (w, h) { cell = Math.floor(Math.min((w - 16) / N, (h - 16) / N)); ox = Math.floor((w - N * cell) / 2); oy = Math.floor((h - N * cell) / 2); W = w; H = h; });
+  function showBest() { A.setHud('best', A.best ? A.best + 's' : '-'); }
+  function reset() { cells = []; for (var i = 0; i < N * N; i++) cells.push({ mine: false, open: false, flag: false, n: 0 }); started = false; running = true; lost = false; time = 0; flags = 0; opened = 0; A.setHud('mines', MINES); A.setHud('time', '0s'); showBest(); }
+  function nb(i, f) { var x = i % N, y = (i / N) | 0; for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; var nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < N && ny < N) f(ny * N + nx); } }
+  function placeMines(safe) {
+    var banned = {}; banned[safe] = true; nb(safe, function (j) { banned[j] = true; });
+    var pool = []; for (var i = 0; i < N * N; i++) if (!banned[i]) pool.push(i);
+    Arcade.shuffle(pool);
+    for (i = 0; i < MINES; i++) cells[pool[i]].mine = true;
+    for (i = 0; i < N * N; i++) { var c = 0; nb(i, function (j) { if (cells[j].mine) c++; }); cells[i].n = c; }
+  }
+  function open(i) {
+    var stack = [i];
+    while (stack.length) {
+      var k = stack.pop(), c = cells[k];
+      if (c.open || c.flag) continue;
+      c.open = true; opened++;
+      if (c.n === 0 && !c.mine) nb(k, function (j) { if (!cells[j].open) stack.push(j); });
+    }
+  }
+  function dig(i) {
+    var c = cells[i];
+    if (c.flag) return;
+    if (!started) { placeMines(i); started = true; }
+    if (c.open) { // chord
+      if (!c.n) return;
+      var f = 0; nb(i, function (j) { if (cells[j].flag) f++; });
+      if (f !== c.n) return;
+      var hit = false;
+      nb(i, function (j) { if (!cells[j].flag && !cells[j].open) { if (cells[j].mine) hit = true; else open(j); } });
+      if (hit) return boom();
+    } else if (c.mine) return boom();
+    else open(i);
+    A.sfx('blip');
+    if (opened === N * N - MINES) win();
+  }
+  function toggleFlag(i) {
+    var c = cells[i]; if (c.open) return;
+    if (!started) { placeMines(i); started = true; }
+    c.flag = !c.flag; flags += c.flag ? 1 : -1; A.setHud('mines', MINES - flags); A.sfx('tap'); A.buzz(15);
+  }
+  function boom() { running = false; lost = true; for (var i = 0; i < N * N; i++) if (cells[i].mine) cells[i].open = true; A.sfx('hit'); A.buzz(120); setTimeout(function () { A.show({ title: 'Boom!', text: 'You hit a mine after ' + Math.floor(time) + 's.' + (A.best ? ' Best ' + A.best + 's.' : ''), button: 'Play again', onButton: reset }); }, 500); }
+  function win() { running = false; var t = Math.max(1, Math.floor(time)); for (var i = 0; i < N * N; i++) if (cells[i].mine) cells[i].flag = true; A.setHud('mines', 0); A.gameOver({ win: true, title: 'Field cleared!', score: t, big: t + 's', formatBest: function (b) { return b + 's'; } }); showBest(); }
+  function cellAt(x, y) { var cx = Math.floor((x - ox) / cell), cy = Math.floor((y - oy) / cell); if (cx < 0 || cy < 0 || cx >= N || cy >= N) return null; return cy * N + cx; }
+  function draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, W, H);
+    for (var i = 0; i < N * N; i++) {
+      var c = cells[i], x = ox + (i % N) * cell, y = oy + ((i / N) | 0) * cell;
+      if (c.open) {
+        ctx.fillStyle = c.mine ? (lost ? '#5a1f33' : '#1a1630') : '#1a1630'; ctx.fillRect(x, y, cell - 1, cell - 1);
+        if (c.mine) { ctx.fillStyle = '#f2eefc'; ctx.beginPath(); ctx.arc(x + cell / 2, y + cell / 2, cell * 0.22, 0, 6.283); ctx.fill(); ctx.strokeStyle = '#f2eefc'; ctx.lineWidth = 2; for (var k = 0; k < 4; k++) { var a = k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x + cell / 2 - Math.cos(a) * cell * 0.34, y + cell / 2 - Math.sin(a) * cell * 0.34); ctx.lineTo(x + cell / 2 + Math.cos(a) * cell * 0.34, y + cell / 2 + Math.sin(a) * cell * 0.34); ctx.stroke(); } }
+        else if (c.n) { ctx.fillStyle = NUM[c.n]; ctx.font = '700 ' + Math.round(cell * 0.5) + 'px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(c.n), x + cell / 2, y + cell / 2 + 1); }
+      } else {
+        ctx.fillStyle = '#2c2750'; ctx.fillRect(x, y, cell - 1, cell - 1);
+        ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x, y, cell - 1, 2); ctx.fillRect(x, y, 2, cell - 1);
+        if (c.flag) { ctx.fillStyle = '#ff5c7a'; ctx.beginPath(); ctx.moveTo(x + cell * 0.36, y + cell * 0.22); ctx.lineTo(x + cell * 0.72, y + cell * 0.38); ctx.lineTo(x + cell * 0.36, y + cell * 0.54); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#f2eefc'; ctx.fillRect(x + cell * 0.33, y + cell * 0.22, 2, cell * 0.56); }
+      }
+    }
+    if (A.visible()) return;
+    ctx.fillStyle = 'rgba(163,155,196,.8)'; ctx.font = '600 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(flagMode ? 'FLAG MODE: tap marks a mine' : 'Tap digs. Hold to flag.', W / 2, oy - 6);
+  }
+  var row = A.controls([{ id: 'dig', label: 'Dig', title: 'Dig mode' }, { id: 'flag', label: 'Flag', title: 'Flag mode' }], function (id, phase) {
+    if (phase !== 'down') return;
+    flagMode = id === 'flag';
+    row.children[0].classList.toggle('sel', !flagMode); row.children[1].classList.toggle('sel', flagMode);
+  });
+  row.children[0].classList.add('sel');
+  A.input({
+    down: function (x, y) { if (!running) return; downCell = cellAt(x, y); longFired = false; clearTimeout(longTimer); longTimer = setTimeout(function () { if (downCell != null && running) { longFired = true; toggleFlag(downCell); } }, 420); },
+    move: function (x, y) { var c = cellAt(x, y); if (c !== downCell) { clearTimeout(longTimer); downCell = null; } },
+    up: function () { clearTimeout(longTimer); },
+    tap: function (x, y) { if (!running || longFired) return; var i = cellAt(x, y); if (i == null) return; if (flagMode) toggleFlag(i); else dig(i); }
+  });
+  A.onStart(function () { reset(); });
+  reset(); running = false;
+  A.loop(function (dt) { if (running && started) { time += dt; A.setHud('time', Math.floor(time) + 's'); } draw(); });
+  A.showStart();
+})();
+</script>
+</body>
+</html>

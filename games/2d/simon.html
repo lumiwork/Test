@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simon · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+<style>
+  .simon { position: relative; width: 100%; max-width: 360px; aspect-ratio: 1; }
+  .pads { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pad { border-radius: 18px; background: var(--c); opacity: .38; transition: opacity .08s, transform .08s; }
+  .pad.lit { opacity: 1; transform: scale(1.02); box-shadow: 0 0 30px var(--c); }
+  .pad:nth-child(1) { border-top-left-radius: 50%; } .pad:nth-child(2) { border-top-right-radius: 50%; }
+  .pad:nth-child(3) { border-bottom-left-radius: 50%; } .pad:nth-child(4) { border-bottom-right-radius: 50%; }
+  .core { position: absolute; left: 50%; top: 50%; width: 36%; height: 36%; transform: translate(-50%, -50%); border-radius: 50%; background: var(--panel); border: 3px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .core b { font: 600 34px var(--mono); } .core span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { .pad { transition: none; } }
+</style>
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'simon', title: 'Simon', hint: 'Watch the pads light up, then tap them back in the same order. Every round adds one more step.', hud: { score: 'Round', best: 'Best' }, canvas: false });
+  var wrap = A.boardWrap(), box = document.createElement('div'); box.className = 'simon';
+  var pads = document.createElement('div'); pads.className = 'pads';
+  var core = document.createElement('div'); core.className = 'core'; core.innerHTML = '<b>0</b><span>ready</span>';
+  box.appendChild(pads); box.appendChild(core); wrap.appendChild(box);
+  A.onResize(function (w, h) { box.style.maxWidth = Math.min(360, w - 28, h - 28) + 'px'; });
+  var COLORS = ['#5ce06a', '#ff5c7a', '#ffd84d', '#4d8dff'], FREQ = [329.6, 261.6, 220, 164.8], els = [];
+  var seq = [], idx = 0, state = 'idle', timers = [];
+  for (var i = 0; i < 4; i++) {
+    (function (i) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pad'; b.style.setProperty('--c', COLORS[i]); b.setAttribute('aria-label', 'Pad ' + (i + 1));
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); press(i); });
+      els.push(b); pads.appendChild(b);
+    })(i);
+  }
+  function setCore(n, label) { core.firstChild.textContent = n; core.lastChild.textContent = label; }
+  function light(i, ms) { els[i].classList.add('lit'); A.sfx('note', FREQ[i]); timers.push(setTimeout(function () { els[i].classList.remove('lit'); }, ms)); }
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+  function playSeq() {
+    state = 'show'; setCore(seq.length, 'watch');
+    var on = Math.max(170, 420 - seq.length * 18), gap = 110, t = 500;
+    seq.forEach(function (p) { timers.push(setTimeout(function () { light(p, on); }, t)); t += on + gap; });
+    timers.push(setTimeout(function () { state = 'input'; idx = 0; setCore(seq.length, 'your turn'); }, t));
+  }
+  function next() { seq.push(Arcade.randInt(0, 3)); playSeq(); }
+  function press(i) {
+    if (state !== 'input') return;
+    light(i, 220);
+    if (seq[idx] !== i) {
+      state = 'over'; A.sfx('hit'); A.buzz(100); setCore(A.score, 'wrong');
+      timers.push(setTimeout(function () { A.gameOver({ text: 'The pattern broke at step ' + (idx + 1) + ' of ' + seq.length + '.' }); }, 500));
+      return;
+    }
+    idx++;
+    if (idx === seq.length) { state = 'wait'; A.setScore(seq.length); A.flashHud('score'); setCore(seq.length, 'nice'); timers.push(setTimeout(next, 700)); }
+  }
+  function reset() { clearTimers(); seq = []; idx = 0; A.setScore(0); els.forEach(function (e) { e.classList.remove('lit'); }); next(); }
+  A.onStart(function () { reset(); });
+  setCore(0, 'ready');
+  A.showStart();
+})();
+</script>
+</body>
+</html>

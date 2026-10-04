@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- ARTIFACT-START -->
+<title>Pocket Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+/* Layout: wordmark and lede up top, three filter chips, then a 2-up grid of game cards that grows to 3 and 4 columns. */
+:root {
+  --bg: #120f22;
+  --panel: #1d1935;
+  --panel-2: #241e42;
+  --line: #2c2750;
+  --fg: #f2eefc;
+  --muted: #a39bc4;
+  --aqua: #37e0c2;
+  --aqua-ink: #06201b;
+  --amber: #ffb648;
+  --amber-ink: #2a1800;
+  --shadow: 0 14px 34px rgba(0, 0, 0, .35);
+  --display: 'Press Start 2P', 'Courier New', ui-monospace, Menlo, Consolas, monospace;
+  --body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f1eefb; --panel: #ffffff; --panel-2: #f6f3fd; --line: #ddd7f1; --fg: #1b1733; --muted: #655d85;
+    --aqua: #0f9e85; --aqua-ink: #ffffff; --amber: #c9780a; --amber-ink: #ffffff; --shadow: 0 12px 30px rgba(60, 40, 120, .14);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f1eefb; --panel: #ffffff; --panel-2: #f6f3fd; --line: #ddd7f1; --fg: #1b1733; --muted: #655d85;
+  --aqua: #0f9e85; --aqua-ink: #ffffff; --amber: #c9780a; --amber-ink: #ffffff; --shadow: 0 12px 30px rgba(60, 40, 120, .14);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  padding-inline: 16px;
+  padding-block: 0 32px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width: 1040px; margin: 0 auto; }
+.top { padding-block: 28px 18px; display: flex; flex-direction: column; gap: 14px; }
+.eyebrow {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wordmark {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(26px, 7vw, 44px);
+  line-height: 1.25;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.wordmark span { color: var(--aqua); }
+.lede { margin: 0; max-width: 34em; color: var(--muted); font-size: 15px; text-wrap: pretty; }
+.lede b { color: var(--fg); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 0 14px;
+  border-radius: 999px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--fg);
+  font: 600 13px var(--body); cursor: pointer;
+}
+.chip b { font-family: var(--mono); font-weight: 600; color: var(--muted); }
+.chip.is-on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.chip.is-on b { color: var(--bg); opacity: .75; }
+.chip:focus-visible, .card:focus-visible { outline: 2px solid var(--aqua); outline-offset: 2px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
+@media (min-width: 900px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+.card {
+  display: flex; flex-direction: column; min-width: 0;
+  border-radius: 14px; overflow: hidden;
+  background: var(--panel); border: 1px solid var(--line);
+  color: inherit; text-decoration: none;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.card:hover, .card:active { transform: translateY(-2px); box-shadow: var(--shadow); }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover, .card:active { transform: none; } }
+.shot { position: relative; aspect-ratio: 4 / 3; max-width: 100%; background: #120f22; }
+.shot canvas { display: block; width: 100%; height: 100%; }
+.badge {
+  position: absolute; top: 8px; left: 8px;
+  padding: 5px 7px 4px; border-radius: 6px;
+  font-family: var(--display); font-size: 8px; letter-spacing: .04em;
+  background: var(--aqua); color: var(--aqua-ink);
+}
+.card[data-dim="3d"] .badge { background: var(--amber); color: var(--amber-ink); }
+.meta { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; }
+.meta h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.25; }
+.meta p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 6px; font-size: 11px; color: var(--muted); }
+.row .ctrl { text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.row .best { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row .best.has { color: var(--aqua); }
+.card[data-dim="3d"] .row .best.has { color: var(--amber); }
+.foot { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; display: flex; flex-direction: column; gap: 6px; }
+.foot p { margin: 0; }
+.foot a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">20 games · one thumb · no install</p>
+    <h1 class="wordmark">Pocket <span>Arcade</span></h1>
+    <p class="lede"><b>Five games in real 3D</b> and <b>fifteen in 2D</b>, all made for a phone held upright. Tap, swipe, drag or hold. Your best scores stay on this device.</p>
+    <div class="chips" role="group" aria-label="Filter games">
+      <button type="button" class="chip is-on" data-filter="all" id="chip-all">All <b>20</b></button>
+      <button type="button" class="chip" data-filter="3d" id="chip-3d">3D <b>5</b></button>
+      <button type="button" class="chip" data-filter="2d" id="chip-2d">2D <b>15</b></button>
+    </div>
+  </header>
+  <main class="grid" id="grid" aria-live="polite"></main>
+  <footer class="foot">
+    <p>Scores are saved in this browser only. Every game has a speaker button to mute its sounds.</p>
+    <p>The 3D games run on Three.js (MIT licence). Everything else is plain canvas and JavaScript, no network needed once loaded.</p>
+  </footer>
+</div>
+<script>
+(function () {
+  var GAMES = [
+    { id: 'cube-runner', dim: '3d', path: '3d/cube-runner.html', name: 'Cube Runner', blurb: 'Dodge the blocks, grab the coins, keep up with the road.', ctrl: 'Swipe' },
+    { id: 'stack', dim: '3d', path: '3d/stack.html', name: 'Stack', blurb: 'Drop sliding blocks and keep the tower whole.', ctrl: 'Tap' },
+    { id: 'tunnel', dim: '3d', path: '3d/tunnel-rush.html', name: 'Tunnel Rush', blurb: 'Slide around the tube and thread the barriers.', ctrl: 'Drag' },
+    { id: 'ball', dim: '3d', path: '3d/ball-balance.html', name: 'Ball Balance', blurb: 'Tilt the plate, collect gems, avoid the holes.', ctrl: 'Drag' },
+    { id: 'zigzag', dim: '3d', path: '3d/zigzag.html', name: 'ZigZag', blurb: 'Turn at the right moment and stay on the path.', ctrl: 'Tap' },
+    { id: 'flappy', dim: '2d', path: '2d/flappy.html', name: 'Flappy Box', blurb: 'Flap through the gaps between the pipes.', ctrl: 'Tap' },
+    { id: 'snake', dim: '2d', path: '2d/snake.html', name: 'Snake', blurb: 'Eat apples, grow long, never bite your tail.', ctrl: 'Swipe' },
+    { id: '2048', dim: '2d', path: '2d/2048.html', name: '2048', blurb: 'Slide the tiles and merge your way to 2048.', ctrl: 'Swipe' },
+    { id: 'breakout', dim: '2d', path: '2d/breakout.html', name: 'Breakout', blurb: 'Bounce the ball and smash every brick.', ctrl: 'Drag' },
+    { id: 'tetris', dim: '2d', path: '2d/tetris.html', name: 'Tetris', blurb: 'Fit the pieces, clear lines, climb levels.', ctrl: 'Buttons' },
+    { id: 'memory', dim: '2d', path: '2d/memory.html', name: 'Memory Match', blurb: 'Find all eight pairs in as few moves as you can.', ctrl: 'Tap', unit: ' moves' },
+    { id: 'tictactoe', dim: '2d', path: '2d/tictactoe.html', name: 'Tic-Tac-Toe', blurb: 'Three in a row against a sharp AI.', ctrl: 'Tap', unit: ' streak' },
+    { id: 'minesweeper', dim: '2d', path: '2d/minesweeper.html', name: 'Minesweeper', blurb: 'Dig out the field and flag all ten mines.', ctrl: 'Tap · Hold', unit: 's' },
+    { id: 'whack', dim: '2d', path: '2d/whack.html', name: 'Whack-a-Mole', blurb: 'Thirty seconds of fast taps.', ctrl: 'Tap' },
+    { id: 'pong', dim: '2d', path: '2d/pong.html', name: 'Pong', blurb: 'First to seven points against the AI.', ctrl: 'Drag', unit: ' wins' },
+    { id: 'shooter', dim: '2d', path: '2d/shooter.html', name: 'Star Shooter', blurb: 'Steer, auto-fire, and outlast the swarm.', ctrl: 'Drag' },
+    { id: 'jumper', dim: '2d', path: '2d/jumper.html', name: 'Sky Jumper', blurb: 'Bounce from platform to platform, ever higher.', ctrl: 'Hold' },
+    { id: 'simon', dim: '2d', path: '2d/simon.html', name: 'Simon', blurb: 'Repeat the pattern as it keeps growing.', ctrl: 'Tap' },
+    { id: 'catch', dim: '2d', path: '2d/catch.html', name: 'Fruit Catch', blurb: 'Catch the fruit, never the bombs.', ctrl: 'Drag' },
+    { id: 'dino', dim: '2d', path: '2d/dino.html', name: 'Dino Run', blurb: 'Jump the cacti and the low-flying birds.', ctrl: 'Tap' }
+  ];
+  var C = { bg: '#120f22', panel: '#1d1935', line: '#2c2750', fg: '#f2eefc', muted: '#a39bc4', aqua: '#37e0c2', amber: '#ffb648', pink: '#ff5c7a', violet: '#c04dff', green: '#5ce06a', yellow: '#ffd84d', blue: '#4d8dff' };
+  function rr(x, y, w, h, r) { return function (c) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }; }
+  function box(c, x, y, w, h, color, r) { c.fillStyle = color; rr(x, y, w, h, r || 0)(c); c.fill(); }
+  function dot(c, x, y, r, color) { c.fillStyle = color; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill(); }
+  function text(c, s, x, y, size, color) { c.fillStyle = color; c.font = '700 ' + size + 'px ' + 'ui-monospace, Menlo, Consolas, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(s, x, y); }
+  function iso(c, x, y, w, h, d, top, left, right) { // tiny isometric block
+    c.fillStyle = top; c.beginPath(); c.moveTo(x, y - h); c.lineTo(x + w, y - h - d); c.lineTo(x + w * 2, y - h); c.lineTo(x + w, y - h + d); c.closePath(); c.fill();
+    c.fillStyle = left; c.beginPath(); c.moveTo(x, y - h); c.lineTo(x + w, y - h + d); c.lineTo(x + w, y + d); c.lineTo(x, y); c.closePath(); c.fill();
+    c.fillStyle = right; c.beginPath(); c.moveTo(x + w, y - h + d); c.lineTo(x + w * 2, y - h); c.lineTo(x + w * 2, y); c.lineTo(x + w, y + d); c.closePath(); c.fill();
+  }
+  var THUMBS = {
+    'cube-runner': function (c) { c.fillStyle = C.panel; c.beginPath(); c.moveTo(55, 30); c.lineTo(105, 30); c.lineTo(150, 120); c.lineTo(10, 120); c.closePath(); c.fill(); c.strokeStyle = C.aqua; c.lineWidth = 2; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(72, 30); c.lineTo(58, 120); c.moveTo(88, 30); c.lineTo(102, 120); c.stroke(); c.setLineDash([]); box(c, 92, 44, 10, 12, C.pink); box(c, 70, 72, 24, 24, C.amber, 3); box(c, 70, 90, 24, 6, '#c47d12'); },
+    stack: function (c) { var hues = [0, 20, 40, 60, 80, 100, 120]; for (var i = 0; i < 7; i++) { var w = 28 - i * 1.5, y = 112 - i * 11; iso(c, 80 - w, y, w, 8, w * 0.5, 'hsl(' + hues[i] + ',60%,62%)', 'hsl(' + hues[i] + ',60%,42%)', 'hsl(' + hues[i] + ',60%,50%)'); } },
+    tunnel: function (c) { for (var i = 0; i < 6; i++) { var r = 60 - i * 10; c.strokeStyle = 'rgba(55,224,194,' + (0.35 + i * 0.12) + ')'; c.lineWidth = 2; c.beginPath(); c.arc(80, 56, r, 0, 6.283); c.stroke(); } box(c, 62, 24, 18, 6, C.pink, 2); dot(c, 80, 102, 8, C.amber); },
+    ball: function (c) { c.save(); c.translate(80, 64); c.transform(1, 0.1, -0.35, 0.55, 0, 0); box(c, -62, -56, 124, 112, '#3a3366'); c.strokeStyle = '#6a62b0'; c.lineWidth = 1; for (var i = -62; i <= 62; i += 24.8) { c.beginPath(); c.moveTo(i, -56); c.lineTo(i, 56); c.moveTo(-62, i * 0.9); c.lineTo(62, i * 0.9); c.stroke(); } dot(c, 20, 18, 9, '#05030c'); c.restore(); dot(c, 70, 70, 9, C.amber); c.fillStyle = C.aqua; c.beginPath(); c.moveTo(104, 40); c.lineTo(112, 50); c.lineTo(104, 60); c.lineTo(96, 50); c.closePath(); c.fill(); },
+    zigzag: function (c) { var pts = [[22, 110], [52, 95], [40, 80], [70, 65], [58, 50], [100, 29], [88, 14]]; for (var i = 0; i < pts.length; i++) { for (var k = 0; k < 3; k++) { var x = pts[i][0] + k * 10 * (i % 2 ? 1 : 1), y = pts[i][1] - k * 5 * (i % 2 ? -1 : 1); iso(c, x, y, 10, 10, 5, '#4a4280', '#2c2750', '#3a3366'); } } dot(c, 62, 60, 7, C.amber); },
+    flappy: function (c) { box(c, 44, 0, 22, 40, C.aqua); box(c, 44, 78, 22, 42, C.aqua); box(c, 110, 0, 22, 24, C.aqua); box(c, 110, 64, 22, 56, C.aqua); box(c, 0, 110, 160, 10, C.panel); box(c, 20, 50, 20, 20, C.amber, 5); dot(c, 34, 56, 3, '#fff'); },
+    snake: function (c) { var s = [[30, 70], [40, 70], [50, 70], [60, 70], [60, 60], [60, 50], [70, 50], [80, 50], [90, 50]]; for (var i = 0; i < s.length; i++) box(c, s[i][0] + 1, s[i][1] + 1, 8, 8, i === s.length - 1 ? '#6cf0d8' : 'hsl(' + (160 - i * 5) + ',70%,' + (50 - i) + '%)', 2); dot(c, 115, 35, 4, C.pink); },
+    '2048': function (c) { var v = [[2, 0, 0, 4], [0, 8, 2, 0], [0, 16, 0, 0], [2, 4, 32, 2]], col = { 2: C.line, 4: '#3a3366', 8: C.aqua, 16: '#2bc5aa', 32: C.amber }; box(c, 20, 0, 120, 120, C.panel, 6); for (var y = 0; y < 4; y++) for (var x = 0; x < 4; x++) { var n = v[y][x]; box(c, 24 + x * 29, 4 + y * 29, 25, 25, n ? col[n] : '#231e40', 4); if (n) text(c, String(n), 36.5 + x * 29, 17 + y * 29, 10, n >= 8 ? '#06201b' : C.fg); } },
+    breakout: function (c) { for (var y = 0; y < 4; y++) for (var x = 0; x < 7; x++) box(c, 8 + x * 21, 10 + y * 11, 18, 8, 'hsl(' + (160 + y * 24) + ',70%,55%)', 2); box(c, 60, 104, 40, 6, C.fg, 3); dot(c, 92, 90, 4, C.amber); },
+    tetris: function (c) { var cells = [[2, 10, C.aqua], [3, 10, C.aqua], [4, 10, C.aqua], [5, 10, C.aqua], [0, 11, C.amber], [1, 11, C.amber], [0, 10, C.amber], [6, 11, C.pink], [7, 11, C.pink], [7, 10, C.pink], [8, 10, C.pink], [3, 11, C.violet], [4, 11, C.violet], [5, 11, C.violet], [2, 11, C.violet], [4, 3, C.yellow], [5, 3, C.yellow], [4, 4, C.yellow], [5, 4, C.yellow]]; box(c, 30, 0, 100, 120, C.panel); for (var i = 0; i < cells.length; i++) box(c, 31 + cells[i][0] * 10, 1 + cells[i][1] * 10, 8, 8, cells[i][2]); },
+    memory: function (c) { for (var y = 0; y < 3; y++) for (var x = 0; x < 4; x++) { var up = (x === 1 && y === 0) || (x === 2 && y === 1); box(c, 14 + x * 34, 6 + y * 37, 30, 33, up ? C.panel : C.line, 4); if (up) dot(c, 29 + x * 34, 22 + y * 37, 8, C.pink); else text(c, '?', 29 + x * 34, 23 + y * 37, 12, C.muted); } },
+    tictactoe: function (c) { c.strokeStyle = C.line; c.lineWidth = 3; for (var i = 1; i < 3; i++) { c.beginPath(); c.moveTo(40 + i * 27, 15); c.lineTo(40 + i * 27, 105); c.moveTo(40, 15 + i * 30); c.lineTo(120, 15 + i * 30); c.stroke(); } c.lineWidth = 4; c.lineCap = 'round'; c.strokeStyle = C.aqua; c.beginPath(); c.moveTo(47, 22); c.lineTo(61, 38); c.moveTo(61, 22); c.lineTo(47, 38); c.moveTo(74, 52); c.lineTo(88, 68); c.moveTo(88, 52); c.lineTo(74, 68); c.moveTo(101, 82); c.lineTo(115, 98); c.moveTo(115, 82); c.lineTo(101, 98); c.stroke(); c.strokeStyle = C.amber; c.beginPath(); c.arc(81, 30, 8, 0, 6.283); c.stroke(); c.beginPath(); c.arc(54, 90, 8, 0, 6.283); c.stroke(); },
+    minesweeper: function (c) { var nums = { '1,1': ['1', C.blue], '2,1': ['2', C.green], '1,2': ['1', C.blue], '3,2': ['3', C.pink] }; for (var y = 0; y < 5; y++) for (var x = 0; x < 6; x++) { var open = y > 0 && x > 0 && x < 4 && !(y === 4); box(c, 23 + x * 19, 13 + y * 19, 18, 18, open ? '#1a1630' : C.line); var n = nums[x + ',' + y]; if (n) text(c, n[0], 32 + x * 19, 22 + y * 19, 11, n[1]); } c.fillStyle = C.pink; c.beginPath(); c.moveTo(123, 72); c.lineTo(133, 76); c.lineTo(123, 80); c.closePath(); c.fill(); box(c, 122, 72, 2, 12, C.fg); },
+    whack: function (c) { for (var i = 0; i < 3; i++) { c.fillStyle = '#0d0a18'; c.beginPath(); c.ellipse(30 + i * 50, 92, 20, 7, 0, 0, 6.283); c.fill(); } box(c, 68, 52, 24, 40, '#9a6a3d', 12); dot(c, 76, 66, 2.5, C.bg); dot(c, 84, 66, 2.5, C.bg); dot(c, 80, 74, 3, C.pink); box(c, 0, 92, 160, 28, '#1b2a22'); for (i = 0; i < 3; i++) { c.fillStyle = '#2a4336'; c.beginPath(); c.ellipse(30 + i * 50, 93, 21, 7, 0, 0, Math.PI); c.fill(); } },
+    pong: function (c) { c.setLineDash([5, 5]); c.strokeStyle = C.line; c.lineWidth = 2; c.beginPath(); c.moveTo(0, 60); c.lineTo(160, 60); c.stroke(); c.setLineDash([]); box(c, 48, 12, 40, 6, C.pink, 3); box(c, 72, 102, 40, 6, C.aqua, 3); dot(c, 96, 78, 4, C.amber); },
+    shooter: function (c) { c.fillStyle = 'rgba(255,255,255,.5)'; for (var i = 0; i < 25; i++) c.fillRect((i * 37) % 160, (i * 53) % 120, 1.5, 2); c.fillStyle = C.amber; c.beginPath(); c.moveTo(80, 86); c.lineTo(92, 112); c.lineTo(80, 106); c.lineTo(68, 112); c.closePath(); c.fill(); box(c, 78, 60, 4, 10, C.aqua); box(c, 78, 40, 4, 10, C.aqua); for (i = 0; i < 3; i++) { c.fillStyle = C.pink; var x = 40 + i * 40, y = 20 + (i % 2) * 10; c.beginPath(); c.moveTo(x, y + 10); c.lineTo(x + 10, y - 4); c.lineTo(x - 10, y - 4); c.closePath(); c.fill(); } },
+    jumper: function (c) { var p = [[20, 108], [70, 90], [110, 68], [40, 50], [100, 30], [60, 12]]; for (var i = 0; i < p.length; i++) box(c, p[i][0], p[i][1], 34, 6, i === 2 ? C.amber : C.aqua, 3); box(c, 76, 66, 18, 18, C.amber, 5); dot(c, 86, 72, 2.5, C.fg); },
+    simon: function (c) { var cols = [C.green, C.pink, C.yellow, C.blue], q = [[80, 60, Math.PI, 1.5 * Math.PI], [80, 60, 1.5 * Math.PI, 2 * Math.PI], [80, 60, 0.5 * Math.PI, Math.PI], [80, 60, 0, 0.5 * Math.PI]]; for (var i = 0; i < 4; i++) { c.fillStyle = cols[i]; c.globalAlpha = i === 1 ? 1 : 0.45; c.beginPath(); c.moveTo(80, 60); c.arc(80, 60, 50, q[i][2], q[i][3]); c.closePath(); c.fill(); } c.globalAlpha = 1; dot(c, 80, 60, 16, C.panel); },
+    catch: function (c) { dot(c, 40, 30, 9, C.pink); dot(c, 90, 56, 9, C.amber); dot(c, 125, 24, 8, C.green); dot(c, 60, 80, 9, '#2c2750'); c.strokeStyle = C.muted; c.lineWidth = 2; c.beginPath(); c.moveTo(60, 71); c.lineTo(66, 64); c.stroke(); c.fillStyle = '#b8742e'; c.beginPath(); c.moveTo(78, 98); c.lineTo(122, 98); c.lineTo(116, 116); c.lineTo(84, 116); c.closePath(); c.fill(); box(c, 78, 95, 44, 4, '#e09a4a'); },
+    dino: function (c) { box(c, 0, 92, 160, 2, C.muted); box(c, 30, 62, 20, 16, C.amber, 3); box(c, 42, 50, 16, 14, C.amber, 3); box(c, 34, 78, 5, 10, C.amber); box(c, 43, 78, 5, 10, C.amber); dot(c, 52, 55, 1.6, C.bg); box(c, 110, 66, 9, 26, C.aqua, 3); box(c, 104, 74, 5, 8, C.aqua, 2); box(c, 119, 70, 5, 8, C.aqua, 2); }
+  };
+  function drawThumb(canvas, id) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = 160 * dpr; canvas.height = 120 * dpr;
+    var c = canvas.getContext('2d'); c.scale(dpr, dpr);
+    c.fillStyle = C.bg; c.fillRect(0, 0, 160, 120);
+    try { THUMBS[id](c); } catch (e) { /* a thumbnail is decoration only */ }
+  }
+  function best(g) {
+    var v = null;
+    try { v = localStorage.getItem('arcade:best:' + g.id); } catch (e) { v = null; }
+    var n = parseFloat(v);
+    return isFinite(n) && n > 0 ? n + (g.unit || '') : null;
+  }
+  var grid = document.getElementById('grid');
+  GAMES.forEach(function (g) {
+    var a = document.createElement('a');
+    a.className = 'card'; a.href = g.path; a.dataset.dim = g.dim; a.dataset.id = g.id;
+    a.innerHTML = '<div class="shot"><canvas aria-hidden="true"></canvas><span class="badge"></span></div><div class="meta"><h2></h2><p></p><div class="row"><span class="ctrl"></span><span class="best"></span></div></div>';
+    a.querySelector('.badge').textContent = g.dim.toUpperCase();
+    a.querySelector('h2').textContent = g.name;
+    a.querySelector('p').textContent = g.blurb;
+    a.querySelector('.ctrl').textContent = g.ctrl;
+    var b = best(g), be = a.querySelector('.best');
+    be.textContent = b ? 'Best ' + b : 'No score yet';
+    if (b) be.classList.add('has');
+    a.setAttribute('aria-label', g.name + ', ' + g.dim.toUpperCase() + ' game, ' + g.ctrl.toLowerCase() + ' controls');
+    drawThumb(a.querySelector('canvas'), g.id);
+    grid.appendChild(a);
+  });
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.chip')), current = 'all';
+  function apply(f) {
+    current = f;
+    chips.forEach(function (ch) { ch.classList.toggle('is-on', ch.dataset.filter === f); ch.setAttribute('aria-pressed', ch.dataset.filter === f ? 'true' : 'false'); });
+    Array.prototype.forEach.call(grid.children, function (card) { card.hidden = f !== 'all' && card.dataset.dim !== f; });
+    try { localStorage.setItem('arcade:filter', f); } catch (e) { /* ignore */ }
+  }
+  chips.forEach(function (ch) { ch.addEventListener('click', function () { apply(ch.dataset.filter); }); });
+  var saved = null; try { saved = localStorage.getItem('arcade:filter'); } catch (e) { saved = null; }
+  var hash = (location.hash || '').replace('#', '');
+  apply(hash === '2d' || hash === '3d' ? hash : (saved === '2d' || saved === '3d' ? saved : 'all'));
+  window.addEventListener('pageshow', function () { // refresh bests when coming back from a game
+    Array.prototype.forEach.call(grid.children, function (card) {
+      var g = GAMES.filter(function (x) { return x.id === card.dataset.id; })[0], b = best(g), be = card.querySelector('.best');
+      be.textContent = b ? 'Best ' + b : 'No score yet'; be.classList.toggle('has', !!b);
+    });
+  });
+})();
+</script>
+<!-- ARTIFACT-END -->
+</body>
+</html>

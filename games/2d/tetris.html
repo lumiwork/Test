@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tetris · Pocket Arcade</title>
+<link rel="stylesheet" href="../shared/arcade.css">
+</head>
+<body>
+<script src="../shared/arcade.js"></script>
+<script>
+(function () {
+  var A = Arcade.create({ id: 'tetris', title: 'Tetris', hint: 'Use the buttons, or drag sideways to move, tap to rotate and flick down to drop. Clear lines to score.', hud: { score: 'Score', lines: 'Lines', best: 'Best' } });
+  var ctx = A.ctx, W = 1, H = 1, COLS = 10, ROWS = 20, cell = 10, ox = 0, oy = 0, sideX = 0;
+  var SHAPES = {
+    I: [[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0], [0, 0, 0, 0]], O: [[1, 1], [1, 1]], T: [[0, 1, 0], [1, 1, 1], [0, 0, 0]],
+    S: [[0, 1, 1], [1, 1, 0], [0, 0, 0]], Z: [[1, 1, 0], [0, 1, 1], [0, 0, 0]], J: [[1, 0, 0], [1, 1, 1], [0, 0, 0]], L: [[0, 0, 1], [1, 1, 1], [0, 0, 0]]
+  };
+  var COLORS = { I: '#37e0c2', O: '#ffd84d', T: '#c04dff', S: '#5ce06a', Z: '#ff5c7a', J: '#4d8dff', L: '#ffb648' };
+  var board = [], bag = [], piece = null, next = null, lines = 0, level = 1, running = false, gravT = 0, held = {}, dasT = {}, dragAcc = 0, flash = [], flashT = 0;
+
+  A.onResize(function (w, h) {
+    W = w; H = h;
+    cell = Math.max(6, Math.floor(Math.min((w - 96) / COLS, (h - 16) / ROWS)));
+    ox = 10; oy = Math.floor((h - ROWS * cell) / 2); sideX = ox + COLS * cell + 12;
+  });
+  function newBoard() { board = []; for (var y = 0; y < ROWS; y++) { var r = []; for (var x = 0; x < COLS; x++) r.push(null); board.push(r); } }
+  function fromBag() { if (!bag.length) bag = Arcade.shuffle(['I', 'O', 'T', 'S', 'Z', 'J', 'L']); var t = bag.pop(); return { t: t, m: SHAPES[t].map(function (r) { return r.slice(); }), x: 0, y: 0 }; }
+  function collides(m, x, y) {
+    for (var r = 0; r < m.length; r++) for (var c = 0; c < m[r].length; c++) {
+      if (!m[r][c]) continue;
+      var bx = x + c, by = y + r;
+      if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+      if (by >= 0 && board[by][bx]) return true;
+    }
+    return false;
+  }
+  function spawn() {
+    piece = next || fromBag(); next = fromBag();
+    piece.x = Math.floor((COLS - piece.m.length) / 2); piece.y = -1;
+    if (collides(piece.m, piece.x, piece.y)) { piece.y = -2; if (collides(piece.m, piece.x, piece.y)) { running = false; A.gameOver({ text: 'Level ' + level + '.' }); } }
+  }
+  function rotated(m) { var n = m.length, out = []; for (var r = 0; r < n; r++) { out.push([]); for (var c = 0; c < n; c++) out[r].push(m[n - 1 - c][r]); } return out; }
+  function rotate() {
+    if (!running) return;
+    var m2 = rotated(piece.m), kicks = [0, 1, -1, 2, -2];
+    for (var i = 0; i < kicks.length; i++) { if (!collides(m2, piece.x + kicks[i], piece.y)) { piece.m = m2; piece.x += kicks[i]; A.sfx('blip'); return; } }
+    if (!collides(m2, piece.x, piece.y - 1)) { piece.m = m2; piece.y -= 1; A.sfx('blip'); }
+  }
+  function move(dx) { if (!running) return; if (!collides(piece.m, piece.x + dx, piece.y)) { piece.x += dx; A.sfx('blip'); } }
+  function softDrop() { if (!running) return; if (!collides(piece.m, piece.x, piece.y + 1)) { piece.y++; A.setScore(A.score + 1); gravT = 0; } else lock(); }
+  function hardDrop() { if (!running) return; var n = 0; while (!collides(piece.m, piece.x, piece.y + 1)) { piece.y++; n++; } A.setScore(A.score + n * 2); lock(); A.buzz(15); }
+  function ghostY() { var y = piece.y; while (!collides(piece.m, piece.x, y + 1)) y++; return y; }
+  function lock() {
+    var m = piece.m;
+    for (var r = 0; r < m.length; r++) for (var c = 0; c < m[r].length; c++) {
+      if (!m[r][c]) continue;
+      var by = piece.y + r, bx = piece.x + c;
+      if (by < 0) { running = false; A.gameOver({ text: 'Level ' + level + '.' }); return; }
+      board[by][bx] = COLORS[piece.t];
+    }
+    var cleared = [];
+    for (var y = ROWS - 1; y >= 0; y--) { var full = true; for (var x = 0; x < COLS; x++) if (!board[y][x]) { full = false; break; } if (full) cleared.push(y); }
+    if (cleared.length) {
+      flash = cleared.slice(); flashT = 0.18;
+      for (var i = 0; i < cleared.length; i++) { board.splice(cleared[i] - i, 1); }
+      for (i = 0; i < cleared.length; i++) { var row = []; for (x = 0; x < COLS; x++) row.push(null); board.unshift(row); }
+      lines += cleared.length; A.setHud('lines', lines);
+      A.setScore(A.score + [0, 100, 300, 500, 800][cleared.length] * level); A.flashHud('score');
+      level = Math.floor(lines / 10) + 1; A.sfx(cleared.length === 4 ? 'win' : 'score');
+    } else A.sfx('tap');
+    gravT = 0; spawn();
+  }
+  function interval() { return Math.max(0.07, 0.8 * Math.pow(0.84, level - 1)); }
+  function reset() { newBoard(); bag = []; next = null; lines = 0; level = 1; held = {}; dasT = {}; flash = []; running = true; A.setScore(0); A.setHud('lines', 0); spawn(); }
+
+  function cellRect(x, y, color, alpha) {
+    var px = ox + x * cell, py = oy + y * cell;
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
+    ctx.fillStyle = color; ctx.fillRect(px + 1, py + 1, cell - 2, cell - 2);
+    ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(px + 1, py + 1, cell - 2, Math.max(1, cell * 0.18));
+    ctx.globalAlpha = 1;
+  }
+  function draw() {
+    ctx.fillStyle = '#120f22'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#1a1630'; ctx.fillRect(ox, oy, COLS * cell, ROWS * cell);
+    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1;
+    for (var x = 1; x < COLS; x++) { ctx.beginPath(); ctx.moveTo(ox + x * cell + .5, oy); ctx.lineTo(ox + x * cell + .5, oy + ROWS * cell); ctx.stroke(); }
+    for (var y = 1; y < ROWS; y++) { ctx.beginPath(); ctx.moveTo(ox, oy + y * cell + .5); ctx.lineTo(ox + COLS * cell, oy + y * cell + .5); ctx.stroke(); }
+    for (y = 0; y < ROWS; y++) for (x = 0; x < COLS; x++) if (board[y][x]) cellRect(x, y, board[y][x]);
+    if (piece && running) {
+      var gy = ghostY(), m = piece.m;
+      for (var r = 0; r < m.length; r++) for (var c = 0; c < m[r].length; c++) if (m[r][c]) {
+        if (gy + r >= 0 && gy !== piece.y) cellRect(piece.x + c, gy + r, COLORS[piece.t], 0.22);
+        if (piece.y + r >= 0) cellRect(piece.x + c, piece.y + r, COLORS[piece.t]);
+      }
+    }
+    if (flashT > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (flashT / 0.18) * 0.8 + ')'; for (var i = 0; i < flash.length; i++) ctx.fillRect(ox, oy + flash[i] * cell, COLS * cell, cell); }
+    ctx.strokeStyle = '#2c2750'; ctx.lineWidth = 2; ctx.strokeRect(ox - 1, oy - 1, COLS * cell + 2, ROWS * cell + 2);
+    // side panel
+    ctx.fillStyle = '#a39bc4'; ctx.font = '600 11px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('NEXT', sideX, oy + 4);
+    if (next) {
+      var pc = Math.min(cell, 18), m2 = next.m, w = 0; for (r = 0; r < m2.length; r++) for (c = 0; c < m2[r].length; c++) if (m2[r][c]) w = Math.max(w, c + 1);
+      for (r = 0; r < m2.length; r++) for (c = 0; c < m2[r].length; c++) if (m2[r][c]) { ctx.fillStyle = COLORS[next.t]; ctx.fillRect(sideX + c * pc, oy + 22 + r * pc, pc - 2, pc - 2); }
+    }
+    ctx.fillStyle = '#a39bc4'; ctx.fillText('LEVEL', sideX, oy + 110);
+    ctx.fillStyle = '#f2eefc'; ctx.font = '600 22px ui-monospace, Menlo, monospace'; ctx.fillText(String(level), sideX, oy + 124);
+  }
+
+  function handle(id, phase) {
+    if (phase === 'down') {
+      if (id === 'left') { move(-1); held.left = true; dasT.left = 0.17; }
+      else if (id === 'right') { move(1); held.right = true; dasT.right = 0.17; }
+      else if (id === 'down') { softDrop(); held.down = true; dasT.down = 0.08; }
+      else if (id === 'rot') rotate();
+      else if (id === 'drop') hardDrop();
+    } else { held[id] = false; }
+  }
+  A.controls([{ id: 'left', label: '◀', title: 'Move left' }, { id: 'right', label: '▶', title: 'Move right' }, { id: 'rot', label: '↻', title: 'Rotate' }, { id: 'down', label: '▼', title: 'Soft drop' }, { id: 'drop', label: '⤓', title: 'Hard drop' }], handle);
+  A.input({
+    down: function () { dragAcc = 0; },
+    move: function (x, y, dx) { dragAcc += dx; while (dragAcc > cell) { move(1); dragAcc -= cell; } while (dragAcc < -cell) { move(-1); dragAcc += cell; } },
+    tap: function () { rotate(); },
+    swipe: function (d, dx, dy) { if (d === 'down' && dy > 60) hardDrop(); else if (d === 'up') rotate(); }
+  });
+  A.onKey(function (k) { if (k === 'ArrowLeft') handle('left', 'down'); else if (k === 'ArrowRight') handle('right', 'down'); else if (k === 'ArrowDown') handle('down', 'down'); else if (k === 'ArrowUp' || k === 'x') rotate(); else if (k === ' ') hardDrop(); });
+  window.addEventListener('keyup', function (e) { if (e.key === 'ArrowLeft') held.left = false; if (e.key === 'ArrowRight') held.right = false; if (e.key === 'ArrowDown') held.down = false; });
+  A.onStart(function () { reset(); });
+  newBoard(); next = fromBag(); spawn(); running = false;
+  A.loop(function (dt) {
+    if (flashT > 0) flashT -= dt;
+    if (running) {
+      ['left', 'right', 'down'].forEach(function (k) { if (held[k]) { dasT[k] -= dt; if (dasT[k] <= 0) { dasT[k] = k === 'down' ? 0.05 : 0.06; if (k === 'left') move(-1); else if (k === 'right') move(1); else softDrop(); } } });
+      gravT += dt;
+      if (gravT >= interval()) { gravT = 0; if (!collides(piece.m, piece.x, piece.y + 1)) piece.y++; else lock(); }
+    }
+    draw();
+  });
+  A.showStart();
+})();
+</script>
+</body>
+</html>
