@@ -13,6 +13,20 @@ exports.handler = async (event) => {
     "user-agent": h["user-agent"] || "Mozilla/5.0",
   };
   if (h["x-fig-token"]) headers.cookie = "as_user_token=" + h["x-fig-token"];
+  // Preflight for game launches: tells the client whether /play returns a page or a JSON error.
+  if (sub.startsWith("/__play")) {
+    try {
+      const r = await fetch(UPSTREAM + "/play" + (event.rawQuery ? "?" + event.rawQuery : ""), {
+        headers: { ...headers, accept: "text/html,*/*" }, redirect: "manual",
+      });
+      const type = r.headers.get("content-type") || "";
+      let out = { kind: "html", status: r.status };
+      if (type.includes("json")) { out = { kind: "json", status: r.status, data: JSON.parse((await r.text()) || "{}") }; }
+      return { statusCode: 200, headers: { "content-type": "application/json" }, body: JSON.stringify(out) };
+    } catch (e) {
+      return { statusCode: 200, headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "unknown" }) };
+    }
+  }
   const hasBody = !["GET", "HEAD"].includes(event.httpMethod);
   try {
     const r = await fetch(url, {
