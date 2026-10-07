@@ -13,15 +13,36 @@
 #   - !gamble clover → 3x5 slot machine with paylines, 666 = bust.
 
 # ---- libmagic shim ----
+# neonize uses magic.from_buffer(..., mime=True) to set the media mimetype.
+# A wrong mimetype (octet-stream) makes WhatsApp silently drop/not show images,
+# so this shim sniffs the real type from the file header.
 import sys, types
-if "magic" not in sys.modules:
+
+def _sniff_mime(b):
+    b = bytes(b[:16]) if b else b""
+    if b.startswith(b"\x89PNG\r\n\x1a\n"): return "image/png"
+    if b.startswith(b"\xff\xd8\xff"):        return "image/jpeg"
+    if b[:6] in (b"GIF87a", b"GIF89a"):        return "image/gif"
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP": return "image/webp"
+    if b[4:8] == b"ftyp":                      return "video/mp4"
+    if b.startswith(b"%PDF"):                  return "application/pdf"
+    if b.startswith(b"OggS"):                  return "audio/ogg"
+    return "application/octet-stream"
+
+try:
+    import magic as _real_magic
+    _real_magic.from_buffer(b"\x89PNG\r\n\x1a\n", mime=True)
+except Exception:
     _m = types.ModuleType("magic")
-    _m.from_buffer = lambda b, mime=False: "application/octet-stream"
-    _m.from_file = lambda p, mime=False: "application/octet-stream"
+    _m.from_buffer = lambda b, mime=False: _sniff_mime(b)
+    def _from_file(p, mime=False):
+        with open(p, "rb") as _f:
+            return _sniff_mime(_f.read(16))
+    _m.from_file = _from_file
     class _M:
         def __init__(self, *a, **k): pass
-        def from_buffer(self, b, mime=False): return "application/octet-stream"
-        def from_file(self, p, mime=False): return "application/octet-stream"
+        def from_buffer(self, b, mime=False): return _sniff_mime(b)
+        def from_file(self, p, mime=False): return _from_file(p, mime)
     _m.Magic = _M
     sys.modules["magic"] = _m
 # ---- end shim ----
