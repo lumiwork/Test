@@ -1,64 +1,40 @@
-ELEVENLABS – Erzähltext "Das Haus am Ende des Waldes"
-======================================================
-Empfohlene Einstellungen:
-- Modell: Eleven v3 (versteht Tags wie [whispers]) – alternativ Multilingual v2 (dann die [Tags] entfernen)
-- Stimme: ruhige, warme deutsche Frauenstimme (Voice Library, Filter "German", "calm"/"soft")
-- Stability ca. 55 %, Similarity ca. 75 %, Style ca. 15 %, Speed 0.9
-
----------- Text zum Einfügen ----------
-
-[softly] Hast du dich jemals gefragt … wer dich im Dunkeln beobachtet?
-
-<break time="2.5s" />
-
+<break time="0.5s" />
+Hast du dich jemals gefragt, wer dich im Dunkeln beobachtet?
+<break time="3.0s" /> <break time="1.5s" />
 Man hat dir gesagt, dass niemand nachts den alten Waldweg nimmt.
-<break time="0.8s" />
 Du hast nicht zugehört.
-<break time="0.8s" />
 Und Tom ist dir gefolgt.
-
-<break time="2.0s" />
-
+<break time="2.2s" />
 Das Haus steht seit vierzig Jahren leer.
-<break time="1.5s" />
-Und doch … brennt oben ein Licht.
-
-<break time="2.0s" />
-
+Und doch… brennt oben ein Licht.
+<break time="2.3s" />
 Die Tür ist nicht verschlossen.
-<break time="0.8s" />
-[whispers] Sie hat auf dich gewartet.
-
-<break time="2.5s" />
-
+<break time="1.4s" />
+Sie hat auf dich gewartet.
+<break time="3.0s" /> <break time="3.0s" /> <break time="2.0s" />
 Drei Sekunden Dunkelheit.
-<break time="0.8s" />
 Mehr braucht das Haus nicht.
-<break time="1.0s" />
-Du drehst dich um … aber Tom ist nicht mehr da.
-
-<break time="2.5s" />
-
+Du drehst dich um… aber Tom ist nicht mehr da.
+<break time="3.0s" /> <break time="3.0s" /> <break time="0.7s" />
 Es spricht nicht. Es zeigt nur.
-<break time="0.8s" />
 Hinter einer Tür wartet Tom.
-<break time="0.6s" />
-Hinter der anderen … der Ausgang.
-<break time="1.0s" />
+Hinter der anderen… der Ausgang.
 Aber nur eine Tür wird sich je wieder öffnen.
+<break time="0.6s" />
+Und jetzt… was tust du?
 
-<break time="1.5s" />
 
-[whispers] Und jetzt … was tust du?
+--- Ende A ---
 
----------- Ende A (linke Tür) – separat generieren ----------
+<break time="0.9s" />
+Du öffnest die rote Tür.
+Tom lächelt dich an.
+Aber Tom hatte nie so viele Zähne…
 
-Du öffnest die rote Tür. Tom lächelt dich an.
-<break time="1.0s" />
-[whispers] Aber Tom hatte nie so viele Zähne …
 
----------- Ende B (rechte Tür) – separat generieren ----------
+--- Ende B ---
 
-Du rennst hinaus. Draußen ist es still. Zu still.
-<break time="1.0s" />
-[whispers] Dann geht oben ein Licht an … in deinem Zimmer.
+<break time="0.9s" />
+Du rennst hinaus.
+Draußen ist es still. Zu still.
+Dann geht oben ein Licht an… in deinem Zimmer.
