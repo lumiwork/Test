@@ -7,7 +7,8 @@ Ergebnis voice.json: pro Untertitel-Zeile Start (s), Ende (e) und die Startzeit 
 import difflib, json, os, re, sys
 from pathlib import Path
 
-ZAHLEN = {"vierzig": "40", "drei": "3"}
+ZAHLEN = {"vierzig": "40", "drei": "3", "vier": "4", "zwölf": "12", "dreizehn": "13", "vierzehn": "14", "siebzehn": "17",
+          "zweiundzwanzig": "22", "dreiundzwanzig": "23", "fünfundzwanzig": "25", "dreißig": "30", "zweitausendneunzehn": "2019"}
 
 
 def norm(w):
@@ -27,8 +28,8 @@ def load_words(path):
         data = data.get("words") or data["transcripts"][0]["words"]
     out = []
     for w in data:
-        if w.get("type", "word") != "word":
-            continue
+        if w.get("type", "word") != "word" or (w.get("text") or "").startswith("["):
+            continue  # Regie-Tags wie [pause] gehören nicht zum gesprochenen Text
         text = w.get("text") or w.get("word") or ""
         if norm(text):
             out.append((norm(text), float(w["start"]), float(w["end"])))

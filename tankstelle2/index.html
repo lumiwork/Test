@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tankstelle B47 – Part 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i>NACHTSCHICHT</div><div id="clock">03:01</div><div id="loc">TANKSTELLE B47</div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">TANKSTELLE B47 · PART 2</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script>
+// ---------- Tankstelle (aus Part 1) ----------
+const neon=t=>(Math.sin(t*23)>.92||Math.sin(t*3.1+1)>.97)?.25:1;
+function pump(x,y){ctx.fillStyle='#2b3354';rr(ctx,x-45,y-190,90,190,10);ctx.fill();ctx.fillStyle='#e94f4f';ctx.fillRect(x-45,y-190,90,26);ctx.fillStyle='#9fe3ff';rr(ctx,x-30,y-150,60,40,6);ctx.fill();
+  ctx.fillStyle='#1a2038';ctx.fillRect(x-30,y-95,60,60);ctx.strokeStyle='#11162b';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x+45,y-120);ctx.quadraticCurveTo(x+80,y-60,x+60,y-20);ctx.stroke();}
+function station(t){
+  const g=ctx.createLinearGradient(0,0,0,1150);g.addColorStop(0,'#04060f');g.addColorStop(1,'#111a36');ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle='#070b18';for(let i=0;i<14;i++){const x=i*70-20,h=120+((i*53)%90);ctx.beginPath();ctx.moveTo(x,1000);ctx.lineTo(x+35,1000-h);ctx.lineTo(x+70,1000);ctx.fill();}
+  ctx.fillStyle='#0b0f1e';ctx.fillRect(0,1000,VW,600);
+  // Straße
+  ctx.fillStyle='#090c18';ctx.fillRect(0,1330,VW,270);ctx.fillStyle='#c9c2a0';for(let x=-((t*0)%160);x<VW;x+=160)ctx.fillRect(x,1455,80,10);
+  // Shop
+  ctx.fillStyle='#1b2242';ctx.fillRect(540,640,340,440);ctx.fillStyle='#e9f2ff';ctx.fillRect(560,720,300,280);
+  const lg=ctx.createLinearGradient(560,720,560,1000);lg.addColorStop(0,'#fff7d8');lg.addColorStop(1,'#d9e6ff');ctx.fillStyle=lg;ctx.fillRect(560,720,300,280);
+  ctx.fillStyle='#7c8ab8';for(let r=0;r<3;r++)for(let c=0;c<6;c++){ctx.fillStyle=['#d96b6b','#6bb3d9','#e3c35c','#7fd99b'][(r+c)%4];ctx.fillRect(575+c*28,745+r*45,20,30);}
+  man({x:760,y:1000,s:.42,t,color:'#3b4466',back:'#2a3150',front:1});
+  ctx.fillStyle='#2b3354';ctx.fillRect(560,930,300,70);
+  ctx.strokeStyle='#141a33';ctx.lineWidth=8;ctx.strokeRect(560,720,300,280);ctx.beginPath();ctx.moveTo(710,720);ctx.lineTo(710,1000);ctx.stroke();
+  ctx.fillStyle='#e94f4f';ctx.fillRect(540,650,340,46);ctx.fillStyle='#fff';ctx.font='800 30px Montserrat, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('24/7 SHOP',710,674);
+  glow(710,860,330,'255,240,200',.22);
+  // Dach + Säulen + Zapfsäulen
+  ctx.fillStyle='#1a2142';ctx.fillRect(40,560,560,60);ctx.fillStyle='#e94f4f';ctx.fillRect(40,600,560,16);
+  ctx.fillStyle='#dfe8ff';for(const x of[90,240,390,520])ctx.fillRect(x,620,60,8);
+  for(const x of[120,500]){ctx.fillStyle='#2b3354';ctx.fillRect(x,620,22,460);}
+  for(const x of[90,240,390,520])glow(x+30,700,240,'220,232,255',.12);
+  pump(220,1080);pump(400,1080);
+  // Mast mit B47-Schild
+  ctx.fillStyle='#2b3354';ctx.fillRect(40,300,16,780);const n=neon(t);
+  ctx.fillStyle=`rgba(233,79,79,${.4+.6*n})`;rr(ctx,0,300,120,110,12);ctx.fill();ctx.fillStyle='#fff';ctx.font='900 50px Montserrat, sans-serif';ctx.fillText('B47',60,357);
+  ctx.fillStyle='#0b0f1e';rr(ctx,0,420,120,70,8);ctx.fill();ctx.fillStyle=`rgba(255,80,80,${.5+.5*n})`;ctx.font='700 40px JetBrains Mono, monospace';ctx.fillText('1,89',60,456);
+  glow(60,355,200,'233,79,79',.22*n);
+  // nasser Boden: Spiegelungen
+  ctx.globalAlpha=.18;ctx.fillStyle='#fff3c8';ctx.fillRect(560,1090,300,60);ctx.fillStyle='#dfe8ff';for(const x of[90,240,390,520])ctx.fillRect(x+10,1100,40,140);ctx.globalAlpha=1;
+}
+function shop(t,o={}){
+  // Wand + Regale
+  ctx.fillStyle='#202848';ctx.fillRect(0,0,VW,VH);ctx.fillStyle=pat('wall',wallC);ctx.globalAlpha=.25;ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;
+  for(let r=0;r<5;r++){const y=260+r*130;ctx.fillStyle='#39426a';ctx.fillRect(30,y+92,460,12);
+    for(let c=0;c<9;c++){const h=50+((r*7+c*13)%40);ctx.fillStyle=['#d96b6b','#6bb3d9','#e3c35c','#7fd99b','#c58ae0'][(r+c)%5];rr(ctx,40+c*50,y+92-h,40,h,5);ctx.fill();}}
+  // Fenster nach draußen
+  const kick=o.knock||0,sx=Math.sin(t*90)*kick*5;ctx.save();ctx.translate(sx,0);
+  ctx.fillStyle='#070b1a';ctx.fillRect(530,230,340,650);
+  ctx.fillStyle='#dfe8ff';ctx.fillRect(530,300,340,10);ctx.fillStyle='#3d4a7a';ctx.fillRect(530,640,340,240);glow(700,760,260,'200,215,255',.35);pumpSmall(600,860);pumpSmall(800,860);
+  if(o.figure>0){ctx.globalAlpha=o.figure;creature(700,878,.5,t,{tilt:.15,rim:'rgba(255,70,90,.55)'});ctx.globalAlpha=1;}
+  rain(t,.8,530,230,340,650);ctx.fillStyle='rgba(140,170,255,.07)';ctx.fillRect(530,230,340,650);
+  ctx.strokeStyle='#39426a';ctx.lineWidth=14;ctx.strokeRect(530,230,340,650);ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(700,230);ctx.lineTo(700,880);ctx.stroke();ctx.restore();
+  // Uhr + Monitor
+  ctx.fillStyle='#0b0e1a';rr(ctx,330,168,200,80,12);ctx.fill();ctx.fillStyle='#ff3b4a';ctx.font='800 56px JetBrains Mono, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(S.time||'02:51',430,210);
+  ctx.fillStyle='#0b0e1a';rr(ctx,600,60,240,140,10);ctx.fill();for(let i=0;i<4;i++){ctx.fillStyle=i===3&&o.cam?'#2f6b45':'#1e2a3c';ctx.fillRect(612+(i%2)*112,72+((i/2)|0)*62,104,54);}
+  ctx.fillStyle='#9aa6c8';ctx.font='700 16px JetBrains Mono, monospace';ctx.fillText('CAM 4',782,184);
+  // Röhren an der Decke
+  ctx.fillStyle=o.dark?'#2a3150':'#eef3ff';ctx.fillRect(100,20,300,16);ctx.fillRect(520,20,300,16);
+  // Gestalt hinter dir
+  if(o.behind>0){ctx.globalAlpha=o.behind;creature(565,1075,.72,t,{tilt:.25,rim:'rgba(255,70,90,.75)'});ctx.globalAlpha=1;}
+  // Du hinter der Theke
+  const me=man({x:420,y:1075,s:1.05,t,front:o.turn?0:1,scared:o.scared,label:o.nolabel?null:DU,look:o.look||0});
+  if(o.phone){ctx.fillStyle='#10131f';rr(ctx,455,880,34,60,6);ctx.fill();ctx.fillStyle='#7b8cff';rr(ctx,459,885,26,50,4);ctx.fill();glow(472,910,120,'120,140,255',.35);}
+  // Theke
+  ctx.fillStyle='#2e3658';ctx.fillRect(0,960,VW,30);ctx.fillStyle='#262d4c';ctx.fillRect(0,990,VW,300);ctx.fillStyle='#e94f4f';ctx.fillRect(0,1040,VW,14);
+  ctx.fillStyle='#141a33';rr(ctx,220,880,150,82,8);ctx.fill();ctx.fillStyle='#5ad1ff';rr(ctx,232,890,126,40,6);ctx.fill();
+  ctx.fillStyle='#0c1024';ctx.fillRect(0,1290,VW,310);
+  return me;
+}
+function pumpSmall(x,y){ctx.fillStyle='#1f2747';rr(ctx,x-22,y-90,44,90,6);ctx.fill();ctx.fillStyle='#7a2b34';ctx.fillRect(x-22,y-90,44,12);}
+
+const knockAmt=t=>(S.knocks||[]).reduce((a,k)=>a+(t>=k&&t<k+.25?1-(t-k)/.25:0),0);
+const scenes={
+  outside:{draw(t){const z=1+ease(t/16)*.4;ctx.save();ctx.translate(710,860);ctx.scale(z,z);ctx.translate(-710,-860);station(t);ctx.restore();rain(t,1);darkness(.2,[{x:710,y:860,r:500,a:.5}]);}},
+  counter:{draw(t){
+    const fl=S.flick&&Math.random()<.45;
+    shop(t,{turn:S.turn,knock:knockAmt(t),figure:S.figure!=null?ease((t-S.figure)/.6):0,scared:S.scared,look:S.look,dark:fl,cam:S.camHint,behind:S.behindFinal||0,phone:S.phoneHand});
+    darkness(fl?.86:S.lowLight?.55:.22,[{x:430,y:210,r:200,a:.6},{x:700,y:550,r:380,a:.4},...(S.phoneHand?[{x:472,y:910,r:200,a:.8}]:[])]);
+  }},
+  note:{draw(t){
+    ctx.fillStyle='#262d4c';ctx.fillRect(0,0,VW,VH);ctx.fillStyle=pat('floor',floorC);ctx.globalAlpha=.35;ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;
+    const e=ease(t/.7);ctx.save();ctx.translate(450,880+(1-e)*80);ctx.rotate(-.05+(1-e)*.08);
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-330,-440,680,900);ctx.fillStyle='#f3ecd2';ctx.fillRect(-340,-450,680,900);
+    ctx.strokeStyle='rgba(90,120,200,.25)';ctx.lineWidth=2;for(let y=-330;y<430;y+=62){ctx.beginPath();ctx.moveTo(-320,y);ctx.lineTo(320,y);ctx.stroke();}
+    ctx.strokeStyle='rgba(220,80,80,.35)';ctx.beginPath();ctx.moveTo(-260,-450);ctx.lineTo(-260,450);ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.55)';ctx.save();ctx.rotate(.3);ctx.fillRect(-380,-440,150,40);ctx.restore();ctx.save();ctx.rotate(-.25);ctx.fillRect(200,-370,150,40);ctx.restore();
+    ctx.fillStyle='#1d2a6b';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.font='700 52px Caveat, cursive';ctx.fillText('Regeln für die Nachtschicht!',-240,-350);
+    const R=[['1. Um 3:00 klopft jemand.','   MACH NICHT AUF.'],['2. Licht flackert?','   NICHT auf Kamera 4 schauen!'],['3. Ruft der Chef an …','   LEG AUF.']];
+    ctx.font='700 46px Caveat, cursive';
+    R.forEach((r,i)=>{if((S.rules||0)<=i)return;const p=ease((t-(S['r'+i]||0))/.8);ctx.save();ctx.beginPath();ctx.rect(-260,-280+i*186-50,560*p+10,140);ctx.clip();
+      ctx.fillStyle='#1d2a6b';ctx.fillText(r[0],-240,-240+i*186);ctx.fillStyle='#b3202e';ctx.fillText(r[1],-240,-178+i*186);ctx.restore();});
+    if((S.rules||0)>=3){ctx.fillStyle='#1d2a6b';ctx.font='700 46px Caveat, cursive';ctx.fillText('– Chef',120,360);}
+    ctx.restore();
+    darkness(.25,[{x:450,y:850,r:700,a:.6}]);
+  }},
+  cam4:{draw(t){
+    const j=Math.sin(t*50)*1.5;ctx.save();ctx.translate(j,0);
+    ctx.fillStyle='#1d2420';ctx.fillRect(0,0,VW,VH);
+    ctx.strokeStyle='rgba(160,190,170,.15)';ctx.lineWidth=3;for(let i=-10;i<=20;i++){ctx.beginPath();ctx.moveTo(450+i*40,350);ctx.lineTo(450+i*120,1600);ctx.stroke();}
+    for(let y=380;y<1600;y*=1.12){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(VW,y);ctx.stroke();}
+    ctx.fillStyle='#0d120f';ctx.fillRect(560,120,300,330);ctx.fillStyle='#161d19';ctx.fillRect(560,350,300,100);ctx.strokeStyle='#5b6b60';ctx.lineWidth=10;ctx.strokeRect(560,120,300,330);
+    ctx.fillStyle='#3a463f';for(let r=0;r<3;r++)ctx.fillRect(40,180+r*110,420,14);
+    if(S.behind!=null){const p=t-S.behind,a=p<0?0:p<.15?1:p<.25?0:1;ctx.globalAlpha=a;creature(570,1000,.72,t,{tilt:.25,rim:'rgba(220,255,230,.55)',pR:S.wave!=null?ease((t-S.wave)/.4)*(.78+.22*Math.sin((t-S.wave)*7)):0,dirR:2.7});ctx.globalAlpha=1;}
+    man({x:450,y:1010,s:1.05,t,front:1,color:'#b9c7bd',back:'#7f8f84',label:DU});
+    ctx.fillStyle='#4a5a50';ctx.beginPath();ctx.moveTo(140,930);ctx.lineTo(820,930);ctx.lineTo(880,1080);ctx.lineTo(80,1080);ctx.closePath();ctx.fill();ctx.fillStyle='#2c3630';ctx.fillRect(80,1080,800,170);
+    ctx.fillStyle='#1c2420';rr(ctx,200,880,150,70,8);ctx.fill();
+    ctx.restore();
+    // Kamera-Look: Grünstich, Zeilen, Rauschen, Einblendungen
+    ctx.save();ctx.globalCompositeOperation='overlay';ctx.fillStyle='rgba(90,255,150,.25)';ctx.fillRect(0,0,VW,VH);ctx.restore();
+    ctx.fillStyle='rgba(0,0,0,.18)';for(let y=0;y<VH;y+=6)ctx.fillRect(0,y,VW,2);
+    const st=S.staticT!=null&&t-S.staticT<.4;if(st||Math.random()<.02){ctx.fillStyle=NP[0]||'#888';ctx.globalAlpha=st?.9:.3;ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;}
+    ctx.fillStyle='#e8f5ec';ctx.font='800 34px JetBrains Mono, monospace';ctx.textAlign='right';ctx.textBaseline='alphabetic';ctx.fillText('CAM 04 · KASSE',870,330);
+    const sec=17+Math.floor(t),ts=`03:01:${String(sec%60).padStart(2,'0')}`;ctx.fillText(ts,870,375);
+    if(Math.sin(t*6)>0){ctx.fillStyle='#ff3b4a';ctx.beginPath();ctx.arc(700,410,11,0,7);ctx.fill();}ctx.fillStyle='#ff3b4a';ctx.fillText('REC',870,420);
+    ctx.strokeStyle='rgba(232,245,236,.8)';ctx.lineWidth=4;for(const[x,y,dx,dy]of[[30,300,1,1],[870,300,-1,1],[30,1280,1,-1],[870,1280,-1,-1]]){ctx.beginPath();ctx.moveTo(x,y+60*dy);ctx.lineTo(x,y);ctx.lineTo(x+60*dx,y);ctx.stroke();}
+  }},
+  phone:{draw(t){
+    shop(t,{dark:true,nolabel:true});ctx.fillStyle='rgba(3,5,14,.7)';ctx.fillRect(0,0,VW,VH);
+    const e=ease(t/.5),sh=S.ring?Math.sin(t*95)*7*((t%1.3)<.9?1:0):0;
+    ctx.save();ctx.translate(450+sh,850+(1-e)*160);ctx.rotate(.03+(1-e)*.1);
+    ctx.fillStyle='#0b0d16';rr(ctx,-250,-520,500,1040,66);ctx.fill();ctx.strokeStyle='#2c3150';ctx.lineWidth=6;rr(ctx,-250,-520,500,1040,66);ctx.stroke();
+    const sg=ctx.createLinearGradient(0,-500,0,500);sg.addColorStop(0,'#1d2b4f');sg.addColorStop(1,'#0c1022');ctx.fillStyle=sg;rr(ctx,-232,-502,464,1004,52);ctx.fill();
+    ctx.fillStyle='#05060c';rr(ctx,-62,-484,124,34,17);ctx.fill();
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#9aa6c8';ctx.font='700 26px Montserrat, sans-serif';ctx.fillText('Eingehender Anruf',0,-330);
+    ctx.fillStyle='#39426a';ctx.beginPath();ctx.arc(0,-190,86,0,7);ctx.fill();ctx.fillStyle='#e8ecff';ctx.font='800 80px Montserrat, sans-serif';ctx.fillText('C',0,-186);
+    ctx.font='900 72px Montserrat, sans-serif';ctx.fillText('CHEF',0,-40);ctx.fillStyle='#9aa6c8';ctx.font='700 26px Montserrat, sans-serif';ctx.fillText('Mobil',0,15);
+    if(S.lastSeen){ctx.fillStyle='#ff6b76';ctx.font='800 28px Montserrat, sans-serif';ctx.fillText('Zuletzt online: 14.03.2019',0,80);}
+    const pulse=1+.06*Math.sin(t*6);for(const[x,c,ic]of[[-120,'#ff3b4a','✕'],[120,'#2fcf6a','✆']]){ctx.save();ctx.translate(x,330);ctx.scale(pulse,pulse);ctx.fillStyle=c;ctx.beginPath();ctx.arc(0,0,62,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='800 54px Montserrat, sans-serif';ctx.fillText(ic,0,4);ctx.restore();}
+    ctx.restore();
+  }},
+};
+
+// Laufender Anruf mit dem Chef
+scenes.call={draw(t){shop(t,{dark:true,nolabel:true,behind:.85});ctx.fillStyle='rgba(3,5,14,.72)';ctx.fillRect(0,0,VW,VH);
+  const e=ease(t/.5);ctx.save();ctx.translate(450,860+(1-e)*160);ctx.rotate(-.03+(1-e)*.1);
+  ctx.fillStyle='#0b0d16';rr(ctx,-250,-540,500,1080,66);ctx.fill();ctx.strokeStyle='#2c3150';ctx.lineWidth=6;rr(ctx,-250,-540,500,1080,66);ctx.stroke();
+  const sg=ctx.createLinearGradient(0,-520,0,520);sg.addColorStop(0,'#3a1d2a');sg.addColorStop(1,'#0c1022');ctx.fillStyle=sg;rr(ctx,-232,-522,464,1044,52);ctx.fill();
+  ctx.fillStyle='#05060c';rr(ctx,-62,-504,124,34,17);ctx.fill();ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#9aa6c8';ctx.font='700 26px Montserrat, sans-serif';ctx.fillText(`Anruf läuft · 00:${String(Math.floor(t)).padStart(2,'0')}`,0,-330);
+  ctx.fillStyle='#39426a';ctx.beginPath();ctx.arc(0,-190,86,0,7);ctx.fill();ctx.fillStyle='#e8ecff';ctx.font='800 80px Montserrat, sans-serif';ctx.fillText('C',0,-186);
+  ctx.font='900 72px Montserrat, sans-serif';ctx.fillText('CHEF',0,-40);ctx.fillStyle='#ff6b76';ctx.font='800 28px Montserrat, sans-serif';ctx.fillText('Zuletzt online: 14.03.2019',0,15);
+  for(let i=0;i<24;i++){const n=S.talk?Math.abs(Math.sin(t*9+i*.7)):Math.random()*.5;const h=10+n*60*(S.talk||S.noise?1:.15);ctx.fillStyle=S.talk?'#ff6b76':'#9aa6c8';rr(ctx,-190+i*16,150-h/2,9,h,4);ctx.fill();}
+  ctx.fillStyle='#ff3b4a';ctx.beginPath();ctx.arc(0,380,62,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='800 54px Montserrat, sans-serif';ctx.fillText('✕',0,384);ctx.restore();
+  if(S.noise&&NP[0]){ctx.globalAlpha=.35;ctx.fillStyle=NP[(Math.random()*3)|0];ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;}}};
+// Rückseite des Zettels: Regel 4, fast verwischt
+scenes.back={draw(t){
+  ctx.fillStyle='#262d4c';ctx.fillRect(0,0,VW,VH);ctx.fillStyle=pat('floor',floorC);ctx.globalAlpha=.35;ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;
+  const e=ease(t/.7),fl=Math.min(1,t/.6);ctx.save();ctx.translate(450,860+(1-e)*80);ctx.rotate(.04-(1-e)*.08);ctx.scale(Math.max(.02,Math.abs(Math.cos((1-fl)*Math.PI/2))),1);
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-330,-440,680,900);ctx.fillStyle='#ece3c6';ctx.fillRect(-340,-450,680,900);
+  ctx.strokeStyle='rgba(90,120,200,.2)';ctx.lineWidth=2;for(let y=-330;y<430;y+=62){ctx.beginPath();ctx.moveTo(-320,y);ctx.lineTo(320,y);ctx.stroke();}
+  ctx.fillStyle='#1d2a6b';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.font='700 64px Caveat, cursive';ctx.fillText('4.',-260,-300);
+  ctx.save();ctx.filter='blur(7px)';ctx.globalAlpha=.75;ctx.font='700 50px Caveat, cursive';
+  ctx.fillText('Wenn es dir winkt …',-190,-300);ctx.fillText('niemals zurück zur',-240,-170);ctx.fillText('Kasse, sondern',-240,-50);ctx.fillText('bis zur Straße und',-240,190);ctx.restore();
+  const p=S.word!=null?ease((t-S.word)/.5):0;ctx.fillStyle='#b3202e';ctx.font='700 120px Caveat, cursive';ctx.globalAlpha=.25+.75*p;ctx.fillText('LAUF',-110,90);ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(60,40,30,.35)';for(const[x,y,r]of[[-120,-170,90],[150,-60,70],[-30,210,110],[180,230,60]]){ctx.beginPath();ctx.ellipse(x,y,r,r*.55,.4,0,7);ctx.fill();}
+  ctx.restore();
+  darkness(.3,[{x:450,y:850,r:650,a:.6}]);}};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('phone');S.ring=true;S.time='03:01';hud(false);bed('rain',.25);bed('hum',.08);ringer();await sleep(300);
+  await cap('Stell dir vor… dein Handy klingelt. Auf dem Display: *Chef.*',{big:1});
+  hud(true);clock('03:01','KASSE');S.lastSeen=true;
+  const k=card(`<div class="ln box" style="--c:var(--red)"><span class="pill">PART 2</span><div class="big">ANRUF VON EINEM <span class="red">TOTEN</span></div></div>`,{top:'13%'});
+  await capAt('Dein Chef ist seit 2019 #tot. Und hinter dir steht #jemand.',5,()=>sfx('hit',.35));
+  await out(k);
+  ringOn=false;go('call');S.noise=true;sfx('static',.6);clock('03:02','ANRUF');
+  const a=card(`<span class="ln pill lime">WAHL A · DU GEHST RAN</span>`,{top:'13%'});
+  await cap('Hast du *A* gewählt? Dann gehst du ran.');
+  await cap('Erst nur Rauschen. Dann die Stimme deines *Chefs.*');
+  await out(a);S.noise=false;S.talk=true;bed('drone',.18);
+  const c=card(`<div class="ln box" style="--c:var(--red)"><span class="pill">CHEF</span><div class="big">„DREH DICH <span class="red">NICHT</span> UM.</div><div class="big">DAS HINTER DIR</div><div class="big">BIN <span class="red">NICHT ICH</span>.“</div></div>`,{top:'13%'});
+  await cap('„Dreh dich #nicht um.“');
+  await capAt('„Das hinter dir… bin #nicht *ich.*“',5,()=>{sfx('hit',.6);sfx('whisper',.4);});
+  S.talk=false;await out(c);sfx('static',.4);
+  go('counter');S.time='03:02';S.turn=true;S.look=-2;S.scared=true;S.behindFinal=0;clock('03:02','KASSE');sfx('whoosh',.4);
+  const b=card(`<span class="ln pill white">WAHL B · DU DREHST DICH UM</span>`,{top:'21%'});
+  await cap('Hast du *B* gewählt? Dann drehst du dich um.');
+  await capAt('Da ist #niemand. Nur die Regale. Nur der Regen.',2,()=>sfx('creak',.4));
+  await out(b);
+  S.turn=false;S.scared=false;
+  await capAt('Du atmest auf. Und schaust noch einmal auf ~Kamera ~4.',8,()=>{go('cam4');S.behind=-10;S.staticT=0;sfx('static',.5);});
+  bed('heart',.4);
+  await cap('Es steht immer noch da. Direkt #neben dir.');
+  const w=card(`<div class="ln box" style="--c:var(--red)"><span class="pill">CAM 04</span><div class="big">ES <span class="red">WINKT</span> DIR</div></div>`,{top:'30%'});
+  await capAt('Und es #winkt.',2,()=>{S.wave=now();sfx('hit',.8);});
+  await out(w);bed('heart',0);
+  go('back');sfx('whoosh',.4);clock('03:03','DER ZETTEL');
+  await cap('Dann siehst du: Der Zettel hat eine *Rückseite.*');
+  const r=card(`<span class="ln pill">REGEL #4</span><div class="ln big" style="--d:.12s">FAST <span class="red">VERWISCHT</span></div>`,{top:'13%'});
+  await capWords('~Regel ~vier ist fast verwischt. Lesbar ist nur ein Wort: #Lauf.',i=>{if(i===10){S.word=now();sfx('hit',.7);}});
+  await out(r);
+  bed('heart',.55);dimT=.35;const q=question(),ab=choice('🌧 RAUS IN DEN REGEN','🏪 DU BLEIBST AN DER KASSE');
+  await cap('Rennst du raus in den *Regen?* Oder bleibst du an der #Kasse?',{big:1});
+  await sleep(2500);out(q);out(ab);dimT=.75;hud(false);
+  endCard('AUFLÖSUNG IN PART 3','KOMMENTIERE','<span class="hl">A</span> ODER <span class="red">B</span>');
+  await sleep(4500);bed('heart',0);bed('rain',0);finish();
+}
+boot('phone');
+</script>
+</body>
+</html>

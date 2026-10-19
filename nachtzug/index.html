@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fall #018 – Der Nachtzug</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i>FALL #018</div><div id="clock">23:38</div><div id="loc">NACHTZUG 412</div></div>
+  <div id="ev"><div class="lbl">INDIZIEN</div><div class="dots"><i></i><i></i><i></i></div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">FALL #018 · KRIMI</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script>
+// ---------- Zug, Abteil, Verdächtige ----------
+const hills=t=>{ctx.fillStyle='#0f1838';ctx.beginPath();ctx.moveTo(0,1000);for(let x=0;x<=VW+40;x+=40){const u=x+t*25;ctx.lineTo(x,880-Math.sin(u*.006)*70-Math.sin(u*.017)*30);}ctx.lineTo(VW,1000);ctx.fill();};
+function poles(t,y0,y1,sp,col){ctx.fillStyle=col;const gap=420,off=(t*sp)%gap;for(let x=-off;x<VW+gap;x+=gap){ctx.fillRect(x,y0,16,y1-y0);ctx.fillRect(x-40,y0+30,96,10);}}
+function trainCar(x,y,w,t,lit){
+  ctx.fillStyle='#262f58';rr(ctx,x,y-190,w,190,26);ctx.fill();ctx.fillStyle='#1b2244';ctx.fillRect(x,y-40,w,40);
+  ctx.fillStyle='#c8f031';ctx.fillRect(x,y-70,w,10);
+  for(let i=0;i<5;i++){const wx=x+30+i*(w-60)/5;ctx.fillStyle=lit?'#ffd88a':'#0c1226';rr(ctx,wx,y-165,(w-60)/5-22,62,10);ctx.fill();if(lit){glow(wx+40,y-134,90,'255,210,130',.18);}}
+  ctx.fillStyle='#080b16';for(const wx of[x+60,x+130,x+w-130,x+w-60]){ctx.beginPath();ctx.arc(wx,y+6,22,0,7);ctx.fill();}
+}
+function trainOutside(t){
+  sky();moon(700,250,t);hills(t);
+  treeLayer(t,140,1100,260,20,'#0b1430',90,4);
+  ctx.fillStyle='#0a0f22';ctx.fillRect(0,1100,VW,500);
+  // Schienen
+  ctx.fillStyle='#1c2448';ctx.fillRect(0,1176,VW,10);ctx.fillStyle='#141a36';const off=(t*900)%60;for(let x=-off;x<VW;x+=60)ctx.fillRect(x,1186,30,14);
+  const b=Math.sin(t*22)*1.6;const lit=!S.dark;
+  for(let i=-1;i<3;i++)trainCar(i*460-80,1172+b,440,t,lit);
+  // Tunnel kommt von rechts
+  if(S.tunnel!=null){const x=VW+40-(t-S.tunnel)*420;ctx.fillStyle='#070a16';ctx.beginPath();ctx.moveTo(x-60,1200);ctx.lineTo(x,640);ctx.quadraticCurveTo(x+200,420,x+900,450);ctx.lineTo(x+900,1200);ctx.fill();
+    ctx.fillStyle='#03050c';ctx.fillRect(Math.max(x,-50),930,2000,270);ctx.strokeStyle='#1d2648';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(x,1200);ctx.lineTo(x,930);ctx.stroke();}
+  poles(t,560,1200,1300,'#05070f');
+}
+// Kette in der Schachtel
+function necklace(x,y,s,t,gone){ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+  ctx.fillStyle='#3a0c22';rr(ctx,-90,-20,180,70,14);ctx.fill();ctx.fillStyle='#5a1430';rr(ctx,-80,-12,160,50,10);ctx.fill();
+  ctx.fillStyle='#3a0c22';ctx.save();ctx.translate(0,-20);ctx.rotate(-.18);rr(ctx,-90,-70,180,70,14);ctx.fill();ctx.restore();
+  if(!gone){ctx.fillStyle='#ffd25a';for(let i=0;i<22;i++){const a=Math.PI*(.1+.8*i/21);ctx.beginPath();ctx.arc(Math.cos(a)*-60,-Math.sin(a)*-0+Math.sin(a)*22,4,0,7);ctx.fill();}
+    ctx.fillStyle='#ff3b4a';ctx.beginPath();ctx.moveTo(0,28);ctx.lineTo(10,40);ctx.lineTo(0,54);ctx.lineTo(-10,40);ctx.closePath();ctx.fill();
+    const sp=(t*2)%1;ctx.fillStyle=`rgba(255,255,255,${1-sp})`;ctx.beginPath();ctx.arc(30,10,3+sp*6,0,7);ctx.fill();}
+  ctx.restore();}
+// Abteil: Fenster mit vorbeiziehender Nacht, zwei Bänke, Tisch
+function compartment(t,o={}){
+  ctx.fillStyle='#2a3156';ctx.fillRect(0,0,VW,VH);ctx.fillStyle=pat('stripe',stripeC);ctx.fillRect(0,0,VW,1150);
+  const wx=140,wy=260,ww=620,wh=440;ctx.save();rr(ctx,wx,wy,ww,wh,40);ctx.clip();
+  if(o.tunnel){ctx.fillStyle='#020308';ctx.fillRect(wx,wy,ww,wh);const off=(t*1500)%700;ctx.fillStyle='rgba(255,200,120,.5)';for(let x=wx-off;x<wx+ww;x+=700)ctx.fillRect(x,wy+wh*.4,26,8);}
+  else{ctx.save();ctx.translate(wx,wy-300);ctx.scale(ww/VW,.75);sky();moon(650,500,t);hills(t*3);treeLayer(t,260,1150,260,20,'#0b1430',90,4);poles(t,700,1300,1600,'#05070f');ctx.restore();}
+  ctx.fillStyle='rgba(150,180,255,.08)';ctx.fillRect(wx,wy,ww,wh);ctx.restore();
+  ctx.strokeStyle='#4a5590';ctx.lineWidth=20;rr(ctx,wx,wy,ww,wh,40);ctx.stroke();
+  // Gepäckablage + Koffer
+  ctx.fillStyle='#4a5590';ctx.fillRect(60,170,780,14);ctx.fillStyle='#8a4e64';rr(ctx,120,100,170,70,10);ctx.fill();ctx.fillStyle='#3d7a5a';rr(ctx,560,110,140,60,10);ctx.fill();
+  // Lampe
+  const on=!o.dark;ctx.fillStyle=on?'#fff3cf':'#3a3a40';rr(ctx,380,40,140,24,12);ctx.fill();if(on)glow(450,60,500,'255,230,180',.22);
+  // Tisch
+  ctx.fillStyle='#4a3a30';ctx.fillRect(330,800,240,24);ctx.fillRect(440,824,20,300);
+  // Bänke
+  ctx.fillStyle='#3a4479';rr(ctx,-40,760,300,420,30);ctx.fill();rr(ctx,640,760,300,420,30);ctx.fill();ctx.fillStyle='#46508a';rr(ctx,-40,950,320,90,24);ctx.fill();rr(ctx,620,950,320,90,24);ctx.fill();
+  ctx.fillStyle='#1d2240';ctx.fillRect(0,1150,VW,450);ctx.fillStyle=pat('floor',floorC);ctx.globalAlpha=.3;ctx.fillRect(0,1150,VW,450);ctx.globalAlpha=1;
+  // Student (schläft mit Kopfhörern) und Du
+  const st=man({x:740,y:1150,s:1,t,front:1,color:'#bfe6cb',back:'#8fb79c',seed:2,label:o.dark?null:['B · STUDENT','#7fd99b','#0b1a10']});
+  if(!o.dark)phones(st.head,1);
+  man({x:170,y:1150,s:1,t,front:1,scared:o.scared,look:o.look||0,label:o.dark?null:DU});
+  necklace(450,780,.9,t,o.gone);
+}
+// Details der Verdächtigen
+function capHat(h,s,col){ctx.save();ctx.fillStyle=col;ctx.beginPath();ctx.arc(h[0],h[1]-6*s,33*s,Math.PI,0);ctx.fill();rr(ctx,h[0]-38*s,h[1]-12*s,76*s,10*s,5*s);ctx.fill();ctx.fillStyle='#ffd25a';ctx.fillRect(h[0]-8*s,h[1]-28*s,16*s,8*s);ctx.restore();}
+function phones(h,s){ctx.save();ctx.strokeStyle='#1d2240';ctx.lineWidth=7*s;ctx.beginPath();ctx.arc(h[0],h[1]-4*s,36*s,Math.PI*1.08,Math.PI*1.92);ctx.stroke();ctx.fillStyle='#ff3b4a';for(const dx of[-34,34]){rr(ctx,h[0]+dx*s-9*s,h[1]-14*s,18*s,30*s,7*s);ctx.fill();}ctx.restore();}
+function glasses(h,s){ctx.save();ctx.strokeStyle='#141a33';ctx.lineWidth=3*s;for(const dx of[-11,11]){ctx.beginPath();ctx.arc(h[0]+dx*s,h[1]-3*s,9*s,0,7);ctx.stroke();}ctx.beginPath();ctx.moveTo(h[0]-2*s,h[1]-3*s);ctx.lineTo(h[0]+2*s,h[1]-3*s);ctx.stroke();ctx.restore();}
+function bun(h,s){ctx.save();ctx.fillStyle='#b9bfd0';ctx.beginPath();ctx.arc(h[0],h[1]-6*s,35*s,Math.PI*1.02,Math.PI*1.98);ctx.fill();ctx.beginPath();ctx.arc(h[0],h[1]-42*s,15*s,0,7);ctx.fill();ctx.restore();}
+function jacket(x,y,s,col){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(-30,-182);ctx.lineTo(30,-182);ctx.lineTo(40,-96);ctx.lineTo(-40,-96);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ffd25a';for(const b of[-160,-135,-110]){ctx.beginPath();ctx.arc(0,b,3.5,0,7);ctx.fill();}ctx.restore();}
+function handbag(x,y,s){ctx.save();ctx.fillStyle='#7a3b5a';rr(ctx,x,y,58*s,44*s,8*s);ctx.fill();ctx.strokeStyle='#7a3b5a';ctx.lineWidth=5*s;ctx.beginPath();ctx.arc(x+29*s,y,15*s,Math.PI,0);ctx.stroke();ctx.restore();}
+const SUS=[{x:165,col:'#dfe4f4',back:'#a9b0c8',tag:['A · SCHAFFNER','#5ab0ff','#06122a']},{x:450,col:'#bfe6cb',back:'#8fb79c',tag:['B · STUDENT','#7fd99b','#0b1a10']},{x:735,col:'#f3c6d6',back:'#c896a8',tag:['C · FRAU BERGER','#f3a8c4','#111']}];
+function suspect(i,x,y,s,t,o={}){const d=SUS[i];
+  const m=man({x,y,s,t,color:d.col,back:d.back,front:1,seed:i*1.3,label:o.label?d.tag:null,scared:o.scared});
+  if(i===0){jacket(x,y,s,'#2b3d7a');capHat(m.head,s,'#d93a3a');}
+  if(i===1)phones(m.head,s);
+  if(i===2){bun(m.head,s);glasses(m.head,s);handbag(x+38*s,y-120*s,s);}
+  return m;}
+// Gang im Zug: Fenster links und rechts, Spotlights
+function corridor(t){
+  ctx.fillStyle='#262d52';ctx.fillRect(0,0,VW,VH);
+  for(let i=0;i<3;i++){const x=40+i*300;ctx.save();rr(ctx,x,250,220,330,26);ctx.clip();ctx.fillStyle='#0a1129';ctx.fillRect(x,250,220,330);
+    ctx.fillStyle='#0f1838';const o=(t*300+i*120)%220;ctx.fillRect(x-o,470,440,110);ctx.fillStyle='#05070f';ctx.fillRect(x+((t*900+i*160)%400)-90,250,12,330);ctx.restore();
+    ctx.strokeStyle='#4a5590';ctx.lineWidth=12;rr(ctx,x,250,220,330,26);ctx.stroke();}
+  ctx.fillStyle='#4a5590';ctx.fillRect(0,640,VW,10);
+  ctx.fillStyle='#3a1f30';ctx.fillRect(0,1250,VW,350);ctx.fillStyle='#5a2f45';for(let x=0;x<VW;x+=80)ctx.fillRect(x,1250,40,350);ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,1250,VW,350);
+  ctx.fillStyle='#1d2240';ctx.fillRect(0,1244,VW,8);
+}
+
+const scenes={
+  train:{draw(t){trainOutside(t);darkness(S.dark?.9:.25,S.dark?[]:[{x:450,y:1050,r:600,a:.5}]);}},
+  comp:{draw(t){const fl=S.flick&&Math.random()<.5;compartment(t,{tunnel:S.inTunnel,dark:S.dark||fl,gone:S.gone,scared:S.scared,look:S.look});
+    darkness(S.dark?.985:fl?.85:.2,S.dark?[]:[{x:450,y:400,r:600,a:.5},{x:450,y:790,r:260,a:.6}]);}},
+  box:{draw(t){ctx.fillStyle='#1a1f3d';ctx.fillRect(0,0,VW,VH);ctx.fillStyle=pat('floor',floorC);ctx.globalAlpha=.4;ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;
+    const z=ease(t/1.2);necklace(450,820,3.4+z*.3,t,S.gone);darkness(.35,[{x:450,y:800,r:600,a:.7}]);}},
+  lineup:{draw(t){corridor(t);const A=S.active??-1;
+    for(let i=0;i<3;i++)suspect(i,SUS[i].x,1240,1.25,t,{label:true});
+    const L=[];for(let i=0;i<3;i++)if(A===i||A===3)L.push({x:SUS[i].x,y:1000,r:380,a:.95});
+    darkness(A===-1?.3:.72,L);
+    if(A>=0&&A<3){ctx.save();ctx.globalCompositeOperation='lighter';const x=SUS[A].x,g=ctx.createLinearGradient(x,0,x,1250);g.addColorStop(0,'rgba(255,240,200,.18)');g.addColorStop(1,'rgba(255,240,200,0)');ctx.fillStyle=g;
+      ctx.beginPath();ctx.moveTo(x-60,0);ctx.lineTo(x+60,0);ctx.lineTo(x+200,1250);ctx.lineTo(x-200,1250);ctx.closePath();ctx.fill();ctx.restore();}}},
+};
+
+// ---------- Ablauf ----------
+const alibi=(i,motiv,txt)=>card(`<div class="ln box" style="--c:${SUS[i].tag[1]}"><span class="pill" style="background:${SUS[i].tag[1]};color:${SUS[i].tag[2]}">${SUS[i].tag[0]}</span><div class="mid">${motiv}</div><div class="big" style="font-size:.4em">${txt}</div></div>`,{top:'13%'});
+async function story(){
+  go('train');hud(false);bed('train',.35);await sleep(300);
+  const ti=card(`<span class="ln pill">FALL #018</span><div class="ln title" style="--d:.12s">DER <span class="gold">NACHTZUG</span></div>`,{top:'14%'});
+  await cap('Stell dir vor… du sitzt im *Nachtzug.* Und gleich wirst du #bestohlen.',{big:1});
+  await out(ti);
+  const task=card(`<span class="ln pill lime">DEINE AUFGABE</span><div class="ln big" style="--d:.12s">FINDE DIE <span class="red">LÜGE</span></div>`,{top:'14%'});
+  await cap('Sammle die ~Indizien. Einer hier lügt dich *an.*');
+  await out(task);
+  go('comp');hud(true);ev(true);clock('23:38','ABTEIL 7');
+  await cap('Nachtzug 412. ~23 ~Uhr ~38. Abteil sieben.');
+  go('box');sfx('ding',.3);
+  const k=card(`<div class="ln box"><span class="pill gold">DEINE TASCHE</span><div class="big">OMAS KETTE · <span class="gold">80.000 €</span></div></div>`,{top:'14%'});
+  await cap('In deiner Tasche: die Kette deiner Oma. Wert: ~80.000 Euro.');
+  await out(k);
+  go('train');clock('23:39','STRECKE');
+  const i1=card(`<div class="ln box"><span class="pill gold">INDIZ #1</span><div class="big">KEIN HALT SEIT <span class="gold">23:00</span></div></div>`,{top:'14%'});
+  await capAt('Indiz ~eins: Seit 23 Uhr hat der Zug #nicht gehalten.',1,()=>{found(1);sfx('ding',.5);});
+  await cap('Der Dieb ist also noch an *Bord.*');
+  await out(i1);
+  S.tunnel=now();clock('23:41','TUNNEL');
+  await cap('~23 ~Uhr ~41. Der Zug fährt in einen *Tunnel.*');
+  go('comp');S.inTunnel=true;S.flick=true;sfx('flicker',.6);sfx('whoosh',.5);bed('train',.5);
+  const i2=card(`<div class="ln box" style="--c:var(--blue)"><span class="pill blue">INDIZ #2</span><div class="big">4 MINUTEN <span class="blue">STOCKDUNKEL</span></div></div>`,{top:'14%'});
+  await capWords('Indiz ~zwei: Das Licht fällt aus. Vier Minuten lang. #Komplett dunkel.',i=>{if(i===1){found(2);sfx('ding',.5);}if(i===5){S.flick=false;S.dark=true;sfx('hit',.5);}});
+  await out(i2);
+  await sleep(600);sfx('door',.25);await sleep(700);
+  S.dark=false;S.inTunnel=false;S.gone=true;S.scared=true;clock('23:45','ABTEIL 7');bed('train',.35);
+  const i3=card(`<div class="ln box" style="--c:var(--red)"><span class="pill">INDIZ #3</span><div class="big">DIE KETTE IST <span class="red">WEG</span></div></div>`,{top:'14%'});
+  await capAt('Indiz ~drei: Als das Licht zurückkommt… ist die Kette #weg.',1,()=>{found(3);sfx('ding',.5);});
+  await out(i3);
+  go('lineup');S.active=-1;clock('23:47','GANG');sfx('whoosh',.4);
+  await cap('Jetzt die *Verdächtigen.*');
+  S.active=0;let a=alibi(0,'MOTIV: <span class="blue">SCHLÜSSEL FÜR ALLE ABTEILE</span>','„ICH WAR IM SPEISEWAGEN.“');
+  await cap('A: Der Schaffner. Er hat einen Schlüssel für #jedes Abteil.');
+  await cap('„Im Tunnel war ich im Speisewagen. Kaffee kochen.“');
+  await out(a);
+  S.active=1;a=alibi(1,'MOTIV: <span class="hl">PLEITE · SASS NEBEN DIR</span>','„ICH HAB GESCHLAFEN.“');
+  await cap('B: Ein Student. Pleite. Und er saß direkt #neben dir.');
+  await cap('„Ich hatte Kopfhörer drin und hab geschlafen.“');
+  await out(a);
+  S.active=2;a=alibi(2,'NACHBARABTEIL','„ICH HAB DEN SCHAFFNER GESEHEN.“');
+  await cap('C: Frau Berger aus dem Nachbarabteil.');
+  await cap('„Im Tunnel stand der Schaffner vor deiner Tür. Ich hab seine #rote Mütze gesehen.“');
+  await out(a);
+  S.active=3;bed('heart',.35);
+  const q=card(`<span class="ln pill">3 AUSSAGEN · 1 LÜGE</span>`,{top:'14%'});
+  await cap('Drei Aussagen. *Eine* davon ist #gelogen.');
+  await cap('Die Antwort hast du schon *gehört.*');
+  await out(q);
+  const w=card(`<span class="ln pill">DU ENTSCHEIDEST</span><div class="ln title" style="--d:.12s">WER WAR ES?</div>`,{top:'14%'});
+  await cap('Wer war es? A, B oder C?',{big:1});
+  await out(w);
+  dimT=.75;hud(false);ev(false);
+  card(`<span class="ln pill lime">AUFLÖSUNG IN PART 2</span><div class="ln big" style="--d:.15s;font-size:.8em">KOMMENTIERE</div>
+    <div class="ln mega" style="--d:.3s"><span class="blue">A</span> · <span class="hl">B</span> · <span style="color:#f3a8c4">C</span></div>
+    <div class="ln" style="--d:.5s"><span class="follow">❤ FOLGEN</span></div>
+    <div class="ln box" style="--c:var(--gold);--d:.7s"><div class="mid">HÖR NOCHMAL GENAU HIN 👂<br><span class="dim">DIE LÜGE IST IM TEXT</span></div></div>`,{top:'18%'});
+  await sleep(4500);bed('heart',0);bed('train',0);finish();
+}
+boot('train');
+</script>
+</body>
+</html>
