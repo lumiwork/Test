@@ -1,6 +1,6 @@
 """Ordnet die Wort-Zeitstempel einer Transkription den Untertiteln aus index.html zu.
 
-Aufruf: python3 align.py transkript.json voice.json [anzahl_saetze]
+Aufruf: python3 align.py transkript.json|aufnahme.mp3 voice.json [anzahl_saetze]
 transkript.json: Liste von Wörtern mit text/start/end (Sekunden) – z. B. aus ElevenLabs Scribe.
 Ergebnis voice.json: pro Untertitel-Zeile Start (s), Ende (e) und die Startzeit jedes Wortes relativ zu s (w).
 """
@@ -35,9 +35,82 @@ def load_words(path):
     return out
 
 
+def from_pauses(audio, lines):
+    """Ohne Transkript: Satzgrenzen = die längsten Pausen, Wörter nach Buchstaben verteilt."""
+    import subprocess
+    import numpy as np
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", audio, "-ac", "1", "-ar", "8000", "-af", "highpass=f=120",
+                          "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    x = np.frombuffer(raw, dtype=np.int16).astype(float) / 32768
+    hop = 400  # 50 ms
+    db = np.array([20 * np.log10(np.sqrt(np.mean(x[i:i + hop] ** 2)) + 1e-9) for i in range(0, len(x) - hop, hop)])
+    speech = db > np.percentile(db, 95) - 24
+    runs, i = [], 0
+    while i < len(speech):
+        if speech[i]:
+            j = i
+            while j < len(speech) and speech[j]:
+                j += 1
+            if runs and (i - runs[-1][1]) * 0.05 < 0.12:
+                runs[-1][1] = j
+            else:
+                runs.append([i, j])
+            i = j
+        else:
+            i += 1
+    runs = [(a * 0.05, b * 0.05) for a, b in runs if (b - a) * 0.05 >= 0.1]
+    # Satzgrenzen per DP: Sprechdauer passt zur Buchstabenzahl, Grenzen liegen bevorzugt in langen Pausen
+    chars = [len(re.sub(r"[^\wäöüß]", "", "".join(l))) for l in lines]
+    rate = sum(b - a for a, b in runs) / sum(chars)
+    m, n = len(runs), len(lines)
+    gap = [runs[k + 1][0] - runs[k][1] for k in range(m - 1)] + [0]
+    INF = float("inf")
+    best = [[INF] * (m + 1) for _ in range(n + 1)]
+    back = [[0] * (m + 1) for _ in range(n + 1)]
+    best[0][0] = 0
+    for i in range(1, n + 1):
+        exp = chars[i - 1] * rate
+        for j in range(i, m + 1):
+            for k in range(i - 1, j):
+                if best[i - 1][k] == INF:
+                    continue
+                dur = sum(b - a for a, b in runs[k:j])
+                cost = best[i - 1][k] + ((dur - exp) / exp) ** 2 - (1.5 * gap[j - 1] if j < m else 0)
+                if cost < best[i][j]:
+                    best[i][j], back[i][j] = cost, k
+    groups, j = [], m
+    for i in range(n, 0, -1):
+        k = back[i][j]
+        groups.insert(0, runs[k:j])
+        j = k
+    out = []
+    for l, g in zip(lines, groups):
+        total = sum(b - a for a, b in g)
+        weights = [len(re.sub(r"[^\wäöüß]", "", w)) + 1 for w in l]
+        pos, w_starts = 0.0, []
+        for wt in weights:  # Anteil an der reinen Sprechzeit -> echte Zeit (Pausen überspringen)
+            t, acc = g[0][0], 0.0
+            for a, b in g:
+                if acc + (b - a) >= pos * total:
+                    t = a + (pos * total - acc)
+                    break
+                acc += b - a
+            w_starts.append(t)
+            pos += wt / sum(weights)
+        s = g[0][0]
+        out.append({"text": " ".join(l), "s": round(s, 3), "e": round(g[-1][1], 3), "w": [round(t - s, 3) for t in w_starts]})
+    return out
+
+
 def main():
-    words = load_words(sys.argv[1])
     lines = captions(int(sys.argv[3]) if len(sys.argv) > 3 else 16)
+    if sys.argv[1].endswith((".mp3", ".wav", ".m4a")):
+        out = from_pauses(sys.argv[1], lines)
+        Path(sys.argv[2]).write_text(json.dumps({"lines": out}, ensure_ascii=False, indent=1), encoding="utf-8")
+        for l in out:
+            print(f"{l['s']:7.2f} – {l['e']:7.2f}  {l['text']}")
+        return
+    words = load_words(sys.argv[1])
     flat = [norm(w) for l in lines for w in l]
     # Zahlen-Untertitel wie "40" auch dann treffen, wenn das Transkript "vierzig" schreibt
     sm = difflib.SequenceMatcher(None, flat, [w[0] for w in words], autojunk=False)
