@@ -161,24 +161,33 @@ async function echo(word){const els=[];for(const[l,tp,o,f]of[[50,38,1,.62],[28,3
   await sleep(1200);els.forEach(e=>e.classList.remove('in'));await sleep(400);els.forEach(e=>e.remove());}
 function hud(on){hudEl.classList.toggle('on',on);}
 function clock(t,loc){clockEl.textContent=t;locEl.textContent=loc;clockEl.classList.remove('tick');void clockEl.offsetWidth;clockEl.classList.add('tick');}
-// Untertitel: *lime*  #rot  ~gold  — erscheinen Wort für Wort in Häppchen
-async function cap(text,o={}){
+// Untertitel im TikTok-Stil: Häppchen aus bis zu drei Wörtern stehen komplett da, das gesprochene Wort leuchtet auf.
+// Marker im Text: *lime  #rot  ~gold
+function chunkWords(text){
   const words=text.split(/\s+/).filter(Boolean).map(w=>{const m={'*':'hl','#':'red','~':'gold'}[w[0]];return{w:m?w.slice(1).replace(/\*/g,''):w,c:m||''};});
-  const chunks=[[]];for(const w of words){const c=chunks[chunks.length-1];c.push(w);if(c.length>=3||/[.,?!…:]$/.test(w.w))chunks.push([]);}
+  const chunks=[[]];for(const w of words){const c=chunks[chunks.length-1];c.push(w);if(c.length>=3||/[.,?!…:]["“]?$/.test(w.w))chunks.push([]);}
+  return chunks.filter(c=>c.length);
+}
+function showChunk(ch){capEl.innerHTML='';const box=document.createElement('div');box.className='ch';
+  const spans=ch.map(w=>{const s=document.createElement('span');s.className='w '+w.c;s.textContent=w.w;box.appendChild(s);return s;});
+  capEl.appendChild(box);return spans;}
+const light=(spans,i)=>spans.forEach((s,j)=>s.classList.toggle('on',j===i));
+async function cap(text,o={}){
+  const chunks=chunkWords(text);
   capEl.style.top=o.top||'';capEl.className=o.big?'xl':'';
-  // Mit Sprachaufnahme (vom Renderer gesetzt): Wörter erscheinen, wenn sie gesprochen werden
+  // Mit Sprachaufnahme (vom Renderer gesetzt): jedes Häppchen erscheint mit seinem ersten Wort und bleibt bis zum nächsten stehen
   const L=window.VOICE&&VOICE.lines[VOICE.i];
   if(L){VOICE.i++;VOICE.log.push(performance.now());const t0=performance.now();let k=0;
-    for(const ch of chunks.filter(c=>c.length)){
+    for(const ch of chunks){
       await sleep(Math.max(0,t0+L.w[k]*1000-performance.now()));
-      capEl.innerHTML='';const k0=k;ch.forEach((w,i)=>{const s=document.createElement('span');s.className='w '+w.c;s.textContent=w.w;capEl.appendChild(s);setTimeout(()=>s.classList.add('in'),30+(L.w[k0+i]-L.w[k0])*1000);});
+      const k0=k,sp=showChunk(ch);ch.forEach((_,i)=>setTimeout(()=>light(sp,i),(L.w[k0+i]-L.w[k0])*1000));
       k+=ch.length;
     }
     await sleep(Math.max(0,t0+L.dur*1000-performance.now()));capEl.innerHTML='';return;
   }
-  for(const ch of chunks.filter(c=>c.length)){
-    capEl.innerHTML='';ch.forEach((w,i)=>{const s=document.createElement('span');s.className='w '+w.c;s.textContent=w.w;capEl.appendChild(s);setTimeout(()=>s.classList.add('in'),30+i*110);});
-    await sleep(Math.max(850,(260+ch.length*330)*(o.slow||1)));
+  for(const ch of chunks){
+    const sp=showChunk(ch),step=330*(o.slow||1);ch.forEach((_,i)=>setTimeout(()=>light(sp,i),i*step));
+    await sleep(Math.max(900,ch.length*step+420));
   }
   capEl.innerHTML='';
 }
@@ -203,6 +212,10 @@ function choice(a,b,top='32%'){return card(`<div class="ln opt2" style="--c:var(
 function question(top='11%'){return card(`<span class="ln pill">DEINE WAHL</span><div class="ln title" style="--d:.12s">ENTWEDER…</div><div class="ln title hl" style="--d:.26s">ODER?</div>`,{top});}
 function endCard(pill,mid,big){return card(`<span class="ln pill lime">${pill}</span><div class="ln big" style="--d:.15s;font-size:.8em">${mid}</div>
   <div class="ln mega" style="--d:.3s">${big}</div><div class="ln" style="--d:.5s"><span class="follow">❤ FOLGEN</span></div>`,{top:'22%'});}
+// Abspann: „Folgen für …“ groß, darunter die Aufforderung zum Kommentieren
+function outro(pill,big,ask){return card(`<span class="ln pill lime">${pill}</span><div class="ln big" style="--d:.12s;font-size:.8em">FOLGEN FÜR</div>
+  <div class="ln mega" style="--d:.25s">${big}</div><div class="ln" style="--d:.4s"><span class="follow">❤ FOLGEN</span></div>
+  ${ask?`<div class="ln box" style="--c:var(--gold);--d:.55s"><div class="mid">${ask}</div></div>`:''}`,{top:'15%'});}
 
 // ---------- Start ----------
 const VIDEO=new URLSearchParams(location.search).has('video');
