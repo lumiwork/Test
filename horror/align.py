@@ -17,7 +17,7 @@ def norm(w):
 
 def captions(n):
     html = Path(os.environ.get("SEITE", Path(__file__).parent / "index.html")).read_text(encoding="utf-8")
-    lines = re.findall(r"\bcap\('([^']*)'", html)[:n]
+    lines = re.findall(r"\bcap(?:At)?\('([^']*)'", html)[:n]
     return [[re.sub(r"[*#~]", "", w) for w in l.split()] for l in lines]
 
 
