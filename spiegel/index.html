@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Das Spiegelbild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i>NACHTS</div><div id="clock">02:17</div><div id="loc">BADEZIMMER</div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">DAS SPIEGELBILD · HORROR</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script>
+// ---------- Badezimmer mit Spiegel ----------
+const tiles=mk(80,80,(g)=>{g.fillStyle='#cfd8ea';g.fillRect(0,0,80,80);g.fillStyle='#b6c1d8';g.fillRect(0,76,80,4);g.fillRect(76,0,4,80);});
+// Ein Strichmännchen, von vorne, mit eigenen Armwinkeln (für Spiegel und Original)
+function mirrorMan(x,y,s,t,o={}){
+  const c=o.color||'#f1f3fa',cb=o.back||'#aeb6d0';ctx.save();ctx.translate(x,y);ctx.scale(s*(o.flip?-1:1),s);ctx.lineCap=ctx.lineJoin='round';
+  const L=(col,w,...p)=>{ctx.strokeStyle=col;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.stroke();};
+  const br=Math.sin(t*2)*1.5,hip=[0,-104],neck=[0,-188+br],sh=[0,-178+br];
+  L(cb,20,hip,[-14,-52],[-16,0]);L(c,21,hip,[14,-52],[16,0]);L(c,30,hip,neck);
+  const arm=(side,up)=>{const a=up?Math.PI-.25:.18,e=pt(sh,a*side,48,1),h=pt(e,(up?Math.PI-.05:.1)*side,44,1);L(c,18,sh,e,h);return h;};
+  arm(-1,false);const hand=arm(1,!!o.raise);
+  if(o.palm){ctx.fillStyle=c;ctx.beginPath();ctx.arc(hand[0],hand[1],14,0,7);ctx.fill();}
+  ctx.fillStyle=c;ctx.beginPath();ctx.arc(0,-222+br,32,0,7);ctx.fill();
+  ctx.fillStyle='#141a33';ctx.strokeStyle='#141a33';const blink=o.blink;
+  for(const ex of[-11,11]){if(blink){ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(ex-5,-225+br);ctx.lineTo(ex+5,-225+br);ctx.stroke();}else{ctx.beginPath();ctx.arc(ex,-225+br,o.scared?5:4,0,7);ctx.fill();}}
+  if(o.smile){ctx.lineWidth=3.5;ctx.beginPath();ctx.arc(0,-212+br,12*o.smile,.2*Math.PI,.8*Math.PI);ctx.stroke();}
+  if(o.scared){ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-206+br,5,0,7);ctx.stroke();}
+  if(o.brush){ctx.fillStyle='#5ab0ff';ctx.save();ctx.translate(hand[0]-6,hand[1]-30);ctx.rotate(-.2);rr(ctx,-4,0,10,46,4);ctx.fill();ctx.restore();}
+  ctx.restore();}
+function bathroom(t,o={}){
+  ctx.fillStyle=pat('tiles',tiles);ctx.fillRect(0,0,VW,VH);ctx.fillStyle='rgba(20,26,52,.45)';ctx.fillRect(0,0,VW,VH);
+  // Spiegel
+  const mx=150,my=300,mw=600,mh=640;ctx.fillStyle='#9aa3c2';rr(ctx,mx-16,my-16,mw+32,mh+32,20);ctx.fill();
+  ctx.save();rr(ctx,mx,my,mw,mh,10);ctx.clip();
+  const g=ctx.createLinearGradient(mx,my,mx+mw,my+mh);g.addColorStop(0,'#2b3560');g.addColorStop(1,'#1a2142');ctx.fillStyle=g;ctx.fillRect(mx,my,mw,mh);
+  ctx.fillStyle=pat('tiles',tiles);ctx.globalAlpha=.2;ctx.fillRect(mx,my,mw,mh);ctx.globalAlpha=1;
+  // Spiegelbild (blinzelt verzögert, hebt die andere Hand, lächelt)
+  const r=o.refl||{};mirrorMan(450,my+mh+140,1.25,t,{color:'#d5dbee',back:'#9aa3c2',flip:true,blink:r.blink,raise:r.raise,smile:r.smile,palm:r.palm,brush:r.brush});
+  if(r.palm){glow(450+88,my+250,90,'255,255,255',.25);}
+  // Beschlagen + Schrift
+  if(o.fog>0){ctx.fillStyle=`rgba(220,228,245,${.55*o.fog})`;ctx.fillRect(mx,my,mw,mh);}
+  if(o.write>0){ctx.save();ctx.beginPath();ctx.rect(mx,my,mw*o.write,mh);ctx.clip();ctx.strokeStyle='rgba(30,40,80,.85)';ctx.fillStyle='rgba(40,50,90,.0)';
+    ctx.font='700 110px Caveat, cursive';ctx.textAlign='center';ctx.lineWidth=3;ctx.fillStyle='#3a4475';ctx.fillText('LASS MICH',450,my+250);ctx.fillText('RAUS',450,my+370);ctx.restore();}
+  ctx.fillStyle='rgba(255,255,255,.08)';ctx.beginPath();ctx.moveTo(mx+40,my);ctx.lineTo(mx+160,my);ctx.lineTo(mx+40,my+200);ctx.closePath();ctx.fill();
+  if(o.crack){ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=3;ctx.beginPath();const cx=538,cy=my+250;for(let i=0;i<9;i++){const a=i/9*Math.PI*2+.3;ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*(90+i*17),cy+Math.sin(a)*(90+i*13));}ctx.stroke();}
+  ctx.restore();
+  // Lampe über dem Spiegel
+  const on=!o.dark;ctx.fillStyle=on?'#fff6dc':'#4a4636';rr(ctx,300,230,300,40,14);ctx.fill();if(on)glow(450,250,420,'255,240,200',.28);
+  // Waschbecken + Du (Rücken zur Kamera, nur Kopf/Schultern sichtbar)
+  ctx.fillStyle='#e6ebf6';rr(ctx,180,1020,540,90,30);ctx.fill();ctx.fillStyle='#c9d0e3';rr(ctx,260,1010,380,40,20);ctx.fill();ctx.fillStyle='#9aa3c2';ctx.fillRect(440,960,20,60);
+  ctx.fillStyle='#b6c1d8';ctx.fillRect(250,1110,400,420);
+  const me=o.me||{};ctx.save();ctx.fillStyle='#f1f3fa';ctx.beginPath();ctx.arc(450,1260,70,0,7);ctx.fill();ctx.strokeStyle='#f1f3fa';ctx.lineCap='round';ctx.lineWidth=52;ctx.beginPath();ctx.moveTo(450,1330);ctx.lineTo(450,1600);ctx.stroke();
+  ctx.lineWidth=36;ctx.beginPath();ctx.moveTo(430,1380);ctx.lineTo(330,1560);ctx.stroke();ctx.beginPath();ctx.moveTo(470,1380);ctx.lineTo(me.raise?600:570,me.raise?1170:1560);ctx.stroke();ctx.restore();
+  TAGS.push([450,1170,...DU]);
+}
+const scenes={
+  bath:{draw(t){const fl=S.flick&&Math.random()<.4;
+    const r={blink:S.reflBlink!=null&&t>S.reflBlink&&t<S.reflBlink+.16,raise:!!S.raise,smile:S.smile!=null?ease((t-S.smile)/1.5):0,palm:!!S.palm,brush:S.brush};
+    bathroom(t,{refl:r,fog:S.fog!=null?ease((t-S.fog)/2):0,write:S.write!=null?ease((t-S.write)/2.2):0,dark:fl||S.dark,crack:S.crack,me:{raise:S.raise}});
+    darkness(fl?.82:S.dark?.55:.18,[{x:450,y:600,r:560,a:.6}]);}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('bath');hud(false);bed('hum',.08);bed('drone',.12);S.brush=true;await sleep(300);
+  await cap('Stell dir vor… du putzt dir nachts die Zähne. Vor dem *Spiegel.*',{big:1});
+  hud(true);clock('02:17','BADEZIMMER');sfx('drip',.4);
+  await capWords('Du blinzelst. Dein Spiegelbild… blinzelt einen Moment #später.',i=>{if(i===1)S.reflBlink=now()+.55;if(i===7)sfx('hit',.3);});
+  await cap('Du redest dir ein, dass du müde bist.');
+  S.brush=false;
+  await capAt('Du hebst die rechte Hand. Es hebt die rechte Hand.',5,()=>{S.raise=true;});
+  const k=card(`<div class="ln box" style="--c:var(--red)"><span class="pill">SPIEGEL-FEHLER</span><div class="big">ES HEBT DIE <span class="red">FALSCHE</span> HAND</div></div>`,{top:'13%'});
+  await capAt('Nicht die linke. Die #rechte.',4,()=>sfx('hit',.45));
+  await out(k);S.raise=false;
+  await capAt('Dann lächelt es. Du lächelst #nicht.',1,()=>{S.smile=now();sfx('whisper',.35);});
+  S.fog=now();bed('drone',.2);
+  await cap('Auf dem beschlagenen Spiegel erscheint Schrift.');
+  await capAt('„Lass mich *raus.*“',0,()=>{S.write=now();sfx('glass',.3);});
+  S.flick=true;sfx('flicker',.6);setTimeout(()=>sfx('flicker',.5),1300);
+  await cap('Das Licht im Bad flackert.');
+  S.flick=false;S.dark=true;
+  await capAt('Und dein Spiegelbild legt die Hand auf das #Glas.',8,()=>{S.palm=true;S.raise=true;sfx('glass',.9);sfx('hit',.7);S.crack=true;});
+  bed('heart',.55);dimT=.35;const q=question(),ab=choice('🔨 DU ZERSCHLÄGST IHN','🏃 DU RENNST RAUS');
+  await cap('Zerschlägst du den *Spiegel?* Oder #rennst du aus dem Bad?',{big:1});
+  await sleep(2500);out(q);out(ab);dimT=.75;hud(false);
+  endCard('AUFLÖSUNG IN PART 2','KOMMENTIERE','<span class="hl">A</span> ODER <span class="red">B</span>');
+  await sleep(4500);bed('heart',0);finish();
+}
+boot('bath');
+</script>
+</body>
+</html>

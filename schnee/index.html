@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fußspuren im Schnee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i>SCHNEESTURM</div><div id="clock">23:58</div><div id="loc">BERGHÜTTE · 1.840 M</div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">FUSSSPUREN IM SCHNEE · HORROR</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script>
+// ---------- Berghütte ----------
+const PRINTS=Array.from({length:14},(_,i)=>{const f=i/13;return{x:120+f*330+Math.sin(i*1.7)*18+(i%2?16:-16),y:1460-f*370,a:-.5+f*.2};});
+function pine(x,g,h){ctx.fillStyle='#081024';for(let i=0;i<4;i++){const w=h*.32*(1-i*.18),y=g-h*.22*i;ctx.beginPath();ctx.moveTo(x-w,y);ctx.lineTo(x,y-h*.42);ctx.lineTo(x+w,y);ctx.fill();
+  ctx.fillStyle='#dfe8f7';ctx.beginPath();ctx.moveTo(x-w*.45,y-h*.24);ctx.lineTo(x,y-h*.42);ctx.lineTo(x+w*.45,y-h*.24);ctx.fill();ctx.fillStyle='#081024';}}
+function cabinOutside(t,o={}){
+  const g=ctx.createLinearGradient(0,0,0,1000);g.addColorStop(0,'#050a1c');g.addColorStop(1,'#1b2a4e');ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle='#0d1530';ctx.beginPath();ctx.moveTo(0,820);ctx.lineTo(180,520);ctx.lineTo(330,700);ctx.lineTo(520,430);ctx.lineTo(760,720);ctx.lineTo(900,560);ctx.lineTo(900,900);ctx.lineTo(0,900);ctx.fill();
+  ctx.fillStyle='#c9d4ec';ctx.beginPath();ctx.moveTo(150,575);ctx.lineTo(180,520);ctx.lineTo(215,565);ctx.fill();ctx.beginPath();ctx.moveTo(480,490);ctx.lineTo(520,430);ctx.lineTo(565,495);ctx.fill();
+  for(const[x,h]of[[60,300],[790,340],[860,260]])pine(x,1040,h);
+  const sg=ctx.createLinearGradient(0,980,0,1600);sg.addColorStop(0,'#aebbd8');sg.addColorStop(1,'#e6ecf8');ctx.fillStyle=sg;ctx.beginPath();ctx.moveTo(0,1000);ctx.quadraticCurveTo(450,960,900,1010);ctx.lineTo(900,1600);ctx.lineTo(0,1600);ctx.fill();
+  // Hütte
+  ctx.save();ctx.translate(520,1090);ctx.fillStyle='#4a3326';ctx.fillRect(-200,-260,400,260);ctx.strokeStyle='#2f2018';ctx.lineWidth=4;for(let y=-250;y<0;y+=26){ctx.beginPath();ctx.moveTo(-200,y);ctx.lineTo(200,y);ctx.stroke();}
+  ctx.fillStyle='#1f1612';ctx.beginPath();ctx.moveTo(-240,-250);ctx.lineTo(0,-430);ctx.lineTo(240,-250);ctx.closePath();ctx.fill();ctx.fillStyle='#edf2fb';ctx.beginPath();ctx.moveTo(-250,-246);ctx.lineTo(0,-440);ctx.lineTo(250,-246);ctx.lineTo(225,-232);ctx.lineTo(0,-405);ctx.lineTo(-225,-232);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#2a1d16';ctx.fillRect(90,-470,46,110);const sm=(t*20)%80;ctx.fillStyle='rgba(200,210,230,.25)';for(let i=0;i<4;i++){ctx.beginPath();ctx.arc(113+Math.sin(t+i)*14,-490-i*40-sm*.4,22+i*8,0,7);ctx.fill();}
+  const fl=.8+.2*Math.sin(t*9)*Math.sin(t*3.3);for(const wx of[-160,70]){ctx.fillStyle=`rgb(${230*fl|0},${170*fl|0},${90*fl|0})`;ctx.fillRect(wx,-200,90,80);glow(wx+45,-160,170,'255,180,90',.3*fl);ctx.strokeStyle='#2f2018';ctx.lineWidth=6;ctx.strokeRect(wx,-200,90,80);}
+  ctx.fillStyle='#24180f';ctx.fillRect(-55,-170,90,170);ctx.fillStyle='#c9a24a';ctx.beginPath();ctx.arc(20,-85,6,0,7);ctx.fill();
+  ctx.fillStyle='#e6ecf8';ctx.fillRect(-220,-8,440,14);ctx.restore();
+  // Fußspuren zur Tür
+  const n=o.prints||0;for(let i=0;i<Math.min(n,PRINTS.length);i++){const p=PRINTS[i],s=.6+(1-i/13)*.5;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle='rgba(70,90,140,.55)';ctx.beginPath();ctx.ellipse(0,0,13*s,26*s,0,0,7);ctx.fill();ctx.beginPath();ctx.ellipse(0,-34*s,10*s,12*s,0,0,7);ctx.fill();ctx.restore();}
+  if(o.mark){const p=ease(o.mark);ctx.strokeStyle=`rgba(255,59,74,${p})`;ctx.lineWidth=6;ctx.setLineDash([18,12]);ctx.beginPath();ctx.ellipse(470,1080,90,60,0,0,7*p);ctx.stroke();ctx.setLineDash([]);}
+}
+function cabinInside(t,o={}){
+  ctx.fillStyle='#3a281e';ctx.fillRect(0,0,VW,VH);ctx.strokeStyle='#2a1c15';ctx.lineWidth=5;for(let y=0;y<1200;y+=44){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(VW,y);ctx.stroke();}
+  ctx.fillStyle='#24180f';ctx.fillRect(0,0,VW,120);ctx.fillStyle='#2e2017';for(const x of[120,450,780]){ctx.fillRect(x-20,0,40,120);}
+  // Dachbodenluke
+  ctx.fillStyle='#1b120c';ctx.fillRect(330,120,240,26);const lo=o.hatch||0;ctx.fillStyle='#000';ctx.fillRect(340,146,220*lo,12+lo*30);
+  if(o.dust){for(let i=0;i<18;i++){const p=((t-o.dust)*.7+i*.13)%1;if(t<o.dust)break;ctx.fillStyle=`rgba(230,220,200,${(1-p)*.7})`;ctx.fillRect(360+(i*37)%200,150+p*500,3,3);}}
+  // Fenster mit Sturm
+  ctx.fillStyle='#0e1730';ctx.fillRect(560,330,280,330);snow(t,1,560,330,280,330,180);ctx.strokeStyle='#24180f';ctx.lineWidth=14;ctx.strokeRect(560,330,280,330);ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(700,330);ctx.lineTo(700,660);ctx.moveTo(560,495);ctx.lineTo(840,495);ctx.stroke();
+  // Tür links
+  ctx.fillStyle='#24180f';ctx.fillRect(60,560,200,640);ctx.fillStyle='#c9a24a';ctx.beginPath();ctx.arc(225,880,9,0,7);ctx.fill();ctx.fillStyle='#8f8f8f';ctx.fillRect(210,830,22,30);
+  if(o.lockGlow)glow(221,845,90,'255,220,120',.5);
+  // Kamin
+  ctx.fillStyle='#4b4b55';ctx.fillRect(330,820,240,380);ctx.fillStyle='#0b0b10';ctx.fillRect(370,940,160,170);const ff=.7+.3*Math.sin(t*13)*Math.sin(t*4.1);
+  ctx.fillStyle=`rgba(255,${140*ff|0},40,.95)`;ctx.beginPath();ctx.moveTo(390,1110);ctx.quadraticCurveTo(450,960-ff*40,510,1110);ctx.fill();glow(450,1060,330,'255,150,60',.32*ff);
+  ctx.fillStyle='#2a1c15';ctx.fillRect(0,1200,VW,400);ctx.fillStyle='rgba(255,150,60,.06)';ctx.fillRect(0,1200,VW,400);
+  // Tisch mit Handy
+  ctx.fillStyle='#5a3d2c';ctx.fillRect(600,1080,250,22);ctx.fillRect(620,1102,16,120);ctx.fillRect(812,1102,16,120);
+  if(o.phone){ctx.fillStyle='#10131f';rr(ctx,700,1056,60,26,6);ctx.fill();ctx.fillStyle='#7b8cff';rr(ctx,704,1059,52,20,4);ctx.fill();glow(730,1068,110,'120,140,255',.45);}
+  const me=man({x:o.x??470,y:1330,s:1.1,t,front:o.front??1,dir:o.dir||1,scared:o.scared,look:o.look||0,label:DU});
+}
+const scenes={
+  outside:{draw(t){const z=1+ease(t/14)*.25;ctx.save();ctx.translate(470,1100);ctx.scale(z,z);ctx.translate(-470,-1100);cabinOutside(t,{prints:S.prints,mark:S.mark!=null?(t-S.mark)/1:0});ctx.restore();snow(t,1,0,0,VW,VH,220);darkness(.25,[{x:470,y:950,r:520,a:.5}]);}},
+  window:{draw(t){cabinOutside(t,{prints:S.prints,mark:S.mark!=null?(t-S.mark)/1:0});snow(t,1,0,0,VW,VH,220);
+    ctx.fillStyle='#24180f';ctx.fillRect(0,0,VW,170);ctx.fillRect(0,1460,VW,140);ctx.fillRect(0,0,60,VH);ctx.fillRect(840,0,60,VH);ctx.fillRect(430,170,40,1290);ctx.fillRect(60,800,780,34);
+    ctx.fillStyle='rgba(200,220,255,.06)';ctx.fillRect(60,170,780,1290);darkness(.2,[{x:450,y:900,r:700,a:.5}]);}},
+  inside:{draw(t){const fl=S.flick&&Math.random()<.3;cabinInside(t,{phone:S.phone,scared:S.scared,look:S.look,hatch:S.hatch||0,dust:S.dust,lockGlow:S.lock,x:S.px,dir:S.pdir,front:S.pfront});
+    darkness(fl?.8:S.dark?.5:.25,[{x:450,y:1060,r:520,a:.75},{x:700,y:500,r:260,a:.3},...(S.phone?[{x:730,y:1068,r:200,a:.8}]:[])]);}},
+  phone:{draw(t){cabinInside(t,{});ctx.fillStyle='rgba(3,5,14,.72)';ctx.fillRect(0,0,VW,VH);
+    const e=ease(t/.5);ctx.save();ctx.translate(450,860+(1-e)*160);ctx.rotate(-.03+(1-e)*.1);
+    ctx.fillStyle='#0b0d16';rr(ctx,-250,-540,500,1080,66);ctx.fill();ctx.strokeStyle='#2c3150';ctx.lineWidth=6;rr(ctx,-250,-540,500,1080,66);ctx.stroke();
+    const sg=ctx.createLinearGradient(0,-520,0,520);sg.addColorStop(0,'#1d2b4f');sg.addColorStop(1,'#0c1022');ctx.fillStyle=sg;rr(ctx,-232,-522,464,1044,52);ctx.fill();
+    ctx.fillStyle='#05060c';rr(ctx,-62,-504,124,34,17);ctx.fill();
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#cfd5f5';ctx.font='800 30px Montserrat, sans-serif';ctx.fillText('Unbekannte Nummer',0,-410);ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(-232,-375,464,2);
+    const m=S.msgT!=null?ease((t-S.msgT)/.4):0;if(m>0){ctx.globalAlpha=m;ctx.fillStyle='#2c3456';rr(ctx,-200,-330,300,90,30);ctx.fill();ctx.fillStyle='#fff';ctx.font='800 34px Montserrat, sans-serif';ctx.textAlign='left';ctx.fillText('Ich sehe dich.',-175,-284);ctx.globalAlpha=1;}
+    const ph=S.photoT!=null?ease((t-S.photoT)/.5):0;if(ph>0){ctx.globalAlpha=ph;ctx.fillStyle='#2c3456';rr(ctx,-200,-220,360,440,30);ctx.fill();
+      ctx.save();ctx.beginPath();rr(ctx,-186,-206,332,412,22);ctx.clip();ctx.fillStyle='#3a281e';ctx.fillRect(-186,-206,332,412);ctx.strokeStyle='#2a1c15';ctx.lineWidth=6;for(let x=-186;x<150;x+=34){ctx.beginPath();ctx.moveTo(x,-206);ctx.lineTo(x,210);ctx.stroke();}
+      glow(-10,10,180,'255,150,60',.25);ctx.fillStyle='#e6e9f5';ctx.beginPath();ctx.arc(-20,-10,34,0,7);ctx.fill();ctx.strokeStyle='#e6e9f5';ctx.lineWidth=18;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-60,20);ctx.lineTo(-100,70);ctx.moveTo(20,20);ctx.lineTo(50,60);ctx.stroke();
+      ctx.fillStyle='#7b8cff';rr(ctx,30,50,26,40,5);ctx.fill();glow(43,70,60,'120,140,255',.5);
+      ctx.fillStyle='rgba(255,255,255,.08)';for(let i=0;i<300;i++)ctx.fillRect(-186+Math.random()*332,-206+Math.random()*412,2,2);ctx.restore();ctx.globalAlpha=1;}
+    ctx.restore();}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('outside');hud(false);bed('wind',.4);bed('drone',.14);await sleep(300);
+  await cap('Stell dir vor… du bist allein in einer *Berghütte.*',{big:1});
+  hud(true);clock('23:58','BERGHÜTTE · 1.840 M');
+  const k=card(`<div class="ln box" style="--c:var(--blue)"><span class="pill blue">❄ SCHNEESTURM</span><div class="big">NÄCHSTE STADT: <span class="blue">30 KM</span></div></div>`,{top:'13%'});
+  await cap('Draußen tobt ein #Schneesturm. Die nächste Stadt ist 30 Kilometer weit weg.');
+  await out(k);
+  go('inside');S.px=640;S.pfront=0;S.pdir=1;bed('wind',.25);bed('fire',.22);sfx('whoosh',.4);clock('00:00','BERGHÜTTE · 1.840 M');
+  await cap('Um Mitternacht schaust du aus dem Fenster.');
+  go('window');S.prints=0;bed('wind',.38);sfx('whoosh',.35);
+  await capWords('Im frischen Schnee: #Fußspuren.',i=>{if(i===3){for(let j=0;j<=14;j++)setTimeout(()=>{S.prints=j;},j*90);sfx('hit',.35);}});
+  await capAt('Sie führen direkt zu deiner *Haustür.*',5,()=>{S.mark=now();});
+  const w=card(`<div class="ln box" style="--c:var(--red)"><span class="pill">SPUREN WEG VOM HAUS</span><div class="mega red">0</div></div>`,{top:'13%'});
+  await cap('Aber keine einzige führt wieder #weg.');
+  await out(w);
+  go('inside');S.px=300;S.pfront=0;S.pdir=-1;S.lock=false;bed('wind',.25);bed('fire',.22);
+  await capAt('Du prüfst die Tür. Sie ist abgeschlossen. *Von* *innen.*',6,()=>{S.lock=true;sfx('tick',.7);});
+  S.lock=false;S.pfront=1;
+  await capAt('Dann knarrt über dir der #Dachboden.',1,()=>{S.look=-7;S.scared=true;S.dust=now();sfx('creak',.7);});
+  await capWords('Einmal. Zweimal. Dann Stille.',i=>{if(i===0)sfx('creak',.6);if(i===1)sfx('creak',.75);if(i===3){bed('fire',.08);bed('wind',.15);}});
+  S.phone=true;
+  await capAt('Auf dem Tisch leuchtet dein Handy. Eine neue *Nachricht.*',3,()=>sfx('buzz',.5));
+  go('phone');S.msgT=null;S.photoT=null;clock('00:03','UNBEKANNTE NUMMER');
+  await capAt('Unbekannte Nummer: „Ich sehe dich.“',2,()=>{S.msgT=now();sfx('tick',.5);});
+  await capAt('Und unter der Nachricht: ein #Foto.',5,()=>{S.photoT=now();sfx('static',.3);});
+  await capAt('Es zeigt dich. Wie du gerade auf dein Handy schaust. Von #oben.',11,()=>{sfx('hit',.9);});
+  go('inside');S.phone=true;S.scared=true;S.look=-7;S.hatch=.35;S.dark=true;S.px=470;S.pfront=1;bed('heart',.55);bed('wind',.2);bed('fire',.06);clock('00:04','BERGHÜTTE');
+  dimT=.35;const q=question(),ab=choice('🪜 DU GEHST HOCH','🌨 DU RENNST RAUS');
+  await cap('Gehst du *hoch* auf den Dachboden? Oder rennst du #raus in den Sturm?',{big:1});
+  await sleep(2500);out(q);out(ab);dimT=.75;hud(false);
+  endCard('AUFLÖSUNG IN PART 2','KOMMENTIERE','<span class="hl">A</span> ODER <span class="red">B</span>');
+  await sleep(4500);bed('heart',0);finish();
+}
+boot('outside');
+</script>
+</body>
+</html>
