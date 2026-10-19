@@ -442,6 +442,14 @@ async function story(){
   await cap('Und jetzt… was tust *du?*',{slow:1.25});
   const q=card(`<span class="ln pill">DEINE WAHL</span><div class="ln title" style="--d:.12s">ENTWEDER…</div><div class="ln title hl" style="--d:.26s">ODER?</div>`,{top:'19%'});
   const ch=document.getElementById('choices');ch.style.display='flex';
+  if(VIDEO){
+    // Video: keine Klicks – Frage stehen lassen, dann Cliffhanger-Abspann
+    await sleep(4000);ch.style.display='none';out(q);out(la);out(lb);await sleep(300);dimT=.75;hud(false);
+    card(`<span class="ln pill lime">AUFLÖSUNG IN PART 2</span><div class="ln big" style="--d:.15s;font-size:.8em">FOLGEN FÜR</div><div class="ln mega hl" style="--d:.3s">PART 2</div>
+      <div class="ln" style="--d:.5s"><span class="follow">❤ FOLGEN</span></div>
+      <div class="ln box" style="--c:var(--blue);--d:.7s"><div class="mid">WAS WÄHLST DU?<br><span class="red">A</span> ODER <span class="blue">B</span>? SCHREIB'S IN DIE KOMMENTARE 👇</div></div>`,{top:'20%'});
+    await sleep(4500);window.DONE=true;return;
+  }
   const pick=await new Promise(r=>{document.getElementById('cL').onclick=()=>r('L');document.getElementById('cR').onclick=()=>r('R');});
   ch.style.display='none';out(q);out(la);out(lb);
 
@@ -460,8 +468,10 @@ async function story(){
     <div class="ln box" style="--c:var(--blue);--d:.7s"><div class="mid">WAS HÄTTEST DU GEWÄHLT?<br><span class="red">A</span> ODER <span class="blue">B</span>? SCHREIB'S IN DIE KOMMENTARE 👇</div></div>`,{top:'20%'});
   await sleep(2500);document.getElementById('again').style.display='block';
 }
+const VIDEO=new URLSearchParams(location.search).has('video');
+if(VIDEO){document.getElementById('start').remove();document.getElementById('hint').remove();}
 requestAnimationFrame(frame);go('intro');
-document.getElementById('start').onclick=e=>{e.target.remove();document.getElementById('hint').remove();story();};
+if(!VIDEO)document.getElementById('start').onclick=e=>{e.target.remove();document.getElementById('hint').remove();story();};
 document.getElementById('again').onclick=()=>location.reload();
 </script>
 </body>
