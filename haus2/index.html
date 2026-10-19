@@ -155,7 +155,7 @@ function room(t,o={}){
   const g=ctx.createLinearGradient(0,wy,0,wy+wh);g.addColorStop(0,'#0a1129');g.addColorStop(1,'#1c2a52');ctx.fillStyle=g;ctx.fillRect(wx,wy,ww,wh);
   glow(wx+270,wy+100,140,'190,205,255',.3);ctx.fillStyle='#d6def5';ctx.beginPath();ctx.arc(wx+270,wy+100,34,0,7);ctx.fill();
   for(let i=0;i<8;i++)tree(wx-20+i*55,wy+wh,170+((i*37)%110),18,'#070b18',i);
-  if(o.face>0){ctx.globalAlpha=o.face;ctx.shadowColor='rgba(255,60,80,.8)';ctx.shadowBlur=34;const m=man({x:wx+ww/2-30,y:wy+wh+200,s:1.35,t,color:'#05070f',back:'#05070f',front:1,eye:'#ff3b4a',pack:1});
+  if(o.face>0){ctx.globalAlpha=o.face;ctx.shadowColor='rgba(255,60,80,.8)';ctx.shadowBlur=34;const m=man({x:wx+ww/2-30,y:wy+wh+150,s:1.35,t,color:'#05070f',back:'#05070f',front:1,eye:'#ff3b4a',pack:1});
     ctx.shadowBlur=0;teeth(m.head[0],m.head[1],m.r,Math.min(1,o.face*1.2));ctx.globalAlpha=1;}
   ctx.fillStyle='rgba(150,180,255,.06)';ctx.fillRect(wx,wy,ww,wh);ctx.restore();
   ctx.strokeStyle='#5b4a3f';ctx.lineWidth=18;ctx.strokeRect(wx,wy,ww,wh);ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(wx+ww/2,wy);ctx.lineTo(wx+ww/2,wy+wh);ctx.moveTo(wx,wy+wh*.45);ctx.lineTo(wx+ww,wy+wh*.45);ctx.stroke();
@@ -238,8 +238,8 @@ async function story(){
   await cap('Wer ist dir dann die ganze Zeit #gefolgt?');
   await out(k);
   go('room');S.phone=true;S.scared=true;S.look=-4;clock('00:42','DEIN ZIMMER');bed('heart',.45);
-  await capWords('Und warum klopft es jetzt an deinem *Fenster?*',i=>{if(i===2){const n0=now();S.knocks=[n0,n0+.4,n0+.8];sfx('knock',.9);}if(i===7){S.face=now();sfx('hit',.6);}});
-  dimT=.35;const q=question(),ab=choice('💡 DU MACHST DAS LICHT AUS','🪟 DU SCHAUST RAUS');
+  await capWords('Und warum klopft es jetzt an deinem *Fenster?*',i=>{if(i===2){const n0=now();S.knocks=[n0,n0+.4,n0+.8];sfx('knock',.9);}if(i===4){S.face=now();sfx('hit',.6);}});
+  dimT=.2;const q=question('38%'),ab=choice('💡 DU MACHST DAS LICHT AUS','🪟 DU SCHAUST RAUS','60%');
   await cap('Machst du das *Licht* aus? Oder schaust du aus dem #Fenster?',{big:1});
   await sleep(2500);out(q);out(ab);dimT=.75;hud(false);
   endCard('AUFLÖSUNG IN PART 3','KOMMENTIERE','<span class="hl">A</span> ODER <span class="red">B</span>');
