@@ -134,6 +134,7 @@ function snow(t,a=1,x0=0,y0=0,w=VW,h=VH,wind=60){ctx.save();ctx.beginPath();ctx.
 
 // ---------- Zustand ----------
 const S={};let scene=null,t0=0,frozen=null,dim=0,dimT=0;
+let VIG=1;// Stärke der dunklen Bildränder (helle Seiten wie Papier setzen sie herunter)
 const now=()=>(performance.now()-t0)/1000;
 // ---------- Renderloop ----------
 let nI=0;const NP=[],TAGS=[];
@@ -141,7 +142,7 @@ function frame(){
   const t=now();ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,cv.width,cv.height);
   TAGS.length=0;base(ctx);if(scene)scene.draw(frozen??t);base(ctx);for(const g of TAGS)tag(...g);
   dim+=(dimT-dim)*.08;base(ctx);if(dim>.01){ctx.fillStyle=`rgba(3,5,14,${dim})`;ctx.fillRect(0,0,VW,VH);}
-  ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(vgC,0,0);
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=VIG;ctx.drawImage(vgC,0,0);ctx.globalAlpha=1;
   if(!NP.length)noise.forEach(n=>NP.push(ctx.createPattern(n,'repeat')));
   ctx.globalAlpha=.5;ctx.fillStyle=NP[(nI++>>2)%3];ctx.translate(rnd(0,200),rnd(0,200));ctx.fillRect(-200,-200,cv.width+200,cv.height+200);ctx.globalAlpha=1;
   requestAnimationFrame(frame);

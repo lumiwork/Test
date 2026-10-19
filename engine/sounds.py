@@ -252,12 +252,47 @@ def speaker():
     return norm(x, -9)
 
 
+
+def pop():
+    """Kurzes, freundliches Plopp (Icons und Sprechblasen erscheinen)."""
+    tt = t(0.18)
+    f = 900 * np.exp(-tt * 18) + 300
+    x = np.sin(2 * np.pi * np.cumsum(f) / SR) * env(len(tt), 0.002, 0.05)
+    return norm(x, -8)
+
+
+def tap():
+    """Leises Tippen auf dem Handy-Display."""
+    n = int(0.06 * SR)
+    x = band(rng.standard_normal(n), 1500, 7000) * env(n, 0.0005, 0.008)
+    return norm(x, -12)
+
+
+def click():
+    """Schloss rastet ein: zwei kurze metallische Klicks."""
+    n = int(0.35 * SR)
+    x = np.zeros(n)
+    for start, g in ((0, 1.0), (int(0.09 * SR), 0.7)):
+        m = int(0.05 * SR)
+        x[start:start + m] += g * band(rng.standard_normal(m), 2000, 9000) * env(m, 0.0003, 0.006)
+        x[start:start + m] += g * 0.5 * np.sin(2 * np.pi * 3200 * t(0.05)) * env(m, 0.0003, 0.01)
+    return norm(x, -7)
+
+
+def scribble():
+    """Stift kritzelt übers Papier."""
+    n = int(0.5 * SR)
+    am = 0.5 + 0.5 * np.sin(2 * np.pi * 11 * t(0.5)) ** 2
+    x = band(rng.standard_normal(n), 2500, 8000) * am * env(n, 0.02, 0.3)
+    return norm(x, -14)
+
 if __name__ == "__main__":
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "sounds")
     out.mkdir(parents=True, exist_ok=True)
     for name, fn in [("rain", rain), ("hum", hum), ("tick", tick), ("knock", knock), ("flicker", flicker), ("static", static),
                      ("hit", hit), ("buzz", buzz), ("heart", heart), ("whoosh", whoosh), ("drone", drone), ("ding", ding),
                      ("door", door), ("wind", wind), ("creak", creak), ("fire", fire), ("whisper", whisper), ("drip", drip),
-                     ("train", train), ("glass", glass), ("speaker", speaker)]:
+                     ("train", train), ("glass", glass), ("speaker", speaker),
+                     ("pop", pop), ("tap", tap), ("click", click), ("scribble", scribble)]:
         save(out / f"{name}.wav", fn())
         print("✓", name)

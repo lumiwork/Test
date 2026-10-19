@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WhatsApp für Dummies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@600;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+<style>
+  /* Heller Papier-Look: HUD in Tinte statt Weiß */
+  #hud{color:#1f1d1a} #clock{text-shadow:none} #loc{color:#6b6253} #hud .night{color:#e63946}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i>FÜR DUMMIES</div><div id="clock">01</div><div id="loc">BASICS</div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">WHATSAPP · FÜR DUMMIES</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script>
+// ---------- Papier & Kritzel-Stil ----------
+const INK='#1f1d1a',PAPER='#ebe4d3',GREEN='#25d366',BLUE='#34b7f1',RED='#e63946',YEL='#ffd23f';
+VIG=.35;
+// Zerknülltes Papier: Facetten mit Licht/Schatten, Knicke, kleine Falten, Faserrauschen (einmal erzeugt, immer gleich)
+const paperC=mk(900,1600,(g,w,h)=>{let sd=11;const R=()=>(sd=(sd*16807)%2147483647)/2147483647;
+  g.fillStyle=PAPER;g.fillRect(0,0,w,h);
+  const cols=6,rows=10,P=[];
+  for(let j=0;j<=rows;j++){P.push([]);for(let i=0;i<=cols;i++)P[j].push([i*w/cols+(i%cols?(R()-.5)*120:0),j*h/rows+(j%rows?(R()-.5)*120:0)]);}
+  const tri=[];for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const a=P[j][i],b=P[j][i+1],c=P[j+1][i+1],d=P[j+1][i];if(R()<.5)tri.push([a,b,c],[a,c,d]);else tri.push([a,b,d],[b,c,d]);}
+  g.filter='blur(5px)';
+  for(const t of tri){const l=(R()-.5)*.24,cx=(t[0][0]+t[1][0]+t[2][0])/3,cy=(t[0][1]+t[1][1]+t[2][1])/3,c=l>0?'255,255,255':'70,52,25',a=Math.abs(l);
+    const gr=g.createLinearGradient(t[0][0],t[0][1],cx,cy);gr.addColorStop(0,`rgba(${c},${a})`);gr.addColorStop(1,`rgba(${c},${a*.25})`);
+    g.fillStyle=gr;g.beginPath();g.moveTo(...t[0]);g.lineTo(...t[1]);g.lineTo(...t[2]);g.closePath();g.fill();}
+  g.filter='none';
+  for(const t of tri)for(let k=0;k<3;k++){if(R()<.45)continue;const p=t[k],q=t[(k+1)%3];
+    g.strokeStyle='rgba(80,60,30,.2)';g.lineWidth=2;g.beginPath();g.moveTo(...p);g.lineTo(...q);g.stroke();
+    g.strokeStyle='rgba(255,255,255,.4)';g.lineWidth=1.5;g.beginPath();g.moveTo(p[0]+2,p[1]+2);g.lineTo(q[0]+2,q[1]+2);g.stroke();}
+  for(let i=0;i<70;i++){const x=R()*w,y=R()*h,a=R()*Math.PI,l=20+R()*80;g.strokeStyle=`rgba(80,60,30,${.05+R()*.1})`;g.lineWidth=1.2;
+    g.beginPath();g.moveTo(x,y);g.quadraticCurveTo(x+Math.cos(a)*l/2+(R()-.5)*24,y+Math.sin(a)*l/2+(R()-.5)*24,x+Math.cos(a)*l,y+Math.sin(a)*l);g.stroke();}
+  const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=(R()-.5)*12;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n;}g.putImageData(d,0,0);
+});
+let BOIL=0;
+function paper(t){BOIL=Math.floor(t*8);ctx.drawImage(paperC,0,0);}
+// „Kochende“ Linien: jedes Element wackelt 8× pro Sekunde minimal, wie handgezeichnet
+function wob(k){ctx.save();ctx.translate(Math.sin(BOIL*12.9+k)*1.3,Math.cos(BOIL*7.3+k*1.7)*1.3);ctx.rotate(Math.sin(BOIL*3.1+k*2.3)*.006);}
+const backOut=x=>{x=Math.min(1,Math.max(0,x));const c=1.7;return 1+(c+1)*(x-1)**3+c*(x-1)**2;};
+const popAt=(t,t0,d=.4)=>t0==null||t<t0?0:backOut((t-t0)/d);
+const fadeAt=(t,t0,d=.3)=>t0==null||t<t0?0:ease((t-t0)/d);
+function at(x,y,s,k,f){if(s<=.001)return;wob(k);ctx.translate(x,y);ctx.scale(s,s);f();ctx.restore();}
+function stroke(w=6,col=INK){ctx.strokeStyle=col;ctx.lineWidth=w;ctx.lineCap=ctx.lineJoin='round';}
+function hand(txt,x,y,size=48,col=INK,align='center'){ctx.fillStyle=col;ctx.font=`700 ${size}px Caveat, cursive`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(txt,x,y);}
+function bold(txt,x,y,size=40,col=INK,align='center'){ctx.fillStyle=col;ctx.font=`900 ${size}px Montserrat, sans-serif`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(txt,x,y);}
+function marker(x,y,w,h){ctx.fillStyle='rgba(255,210,63,.55)';ctx.beginPath();ctx.moveTo(x,y+4);ctx.lineTo(x+w,y);ctx.lineTo(x+w-6,y+h);ctx.lineTo(x+4,y+h+3);ctx.closePath();ctx.fill();}
+const qp=(a,c,b,p)=>[(1-p)**2*a[0]+2*(1-p)*p*c[0]+p*p*b[0],(1-p)**2*a[1]+2*(1-p)*p*c[1]+p*p*b[1]];
+function dash(a,c,b,col='rgba(31,29,26,.45)'){ctx.save();ctx.setLineDash([14,12]);stroke(4,col);ctx.beginPath();ctx.moveTo(...a);ctx.quadraticCurveTo(...c,...b);ctx.stroke();ctx.restore();}
+
+// ---------- Bausteine ----------
+function phone(screen,o={}){
+  ctx.fillStyle='rgba(0,0,0,.13)';rr(ctx,-140,-280,300,580,46);ctx.fill();
+  ctx.fillStyle=o.off?'#2b2926':'#fbfaf5';rr(ctx,-150,-290,300,580,46);ctx.fill();
+  stroke(8);rr(ctx,-150,-290,300,580,46);ctx.stroke();ctx.fillStyle=INK;rr(ctx,-40,-274,80,16,8);ctx.fill();
+  if(!o.off&&screen){ctx.save();rr(ctx,-138,-252,276,522,28);ctx.clip();screen();ctx.restore();}
+  stroke(5,o.off?'#555':INK);ctx.beginPath();ctx.moveTo(-40,272);ctx.lineTo(40,272);ctx.stroke();}
+function waIcon(r){ctx.fillStyle=GREEN;ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(-r*.5,r*.62);ctx.lineTo(-r*.95,r*1.02);ctx.lineTo(-r*.12,r*.85);ctx.closePath();ctx.fill();
+  stroke(r*.09);ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.stroke();
+  handset(r*.62,'#fff');}
+// Telefonhörer: gebogener Griff mit Hör- und Sprechmuschel
+function handset(r,col){ctx.save();ctx.rotate(-.55);ctx.strokeStyle=ctx.fillStyle=col;ctx.lineCap='round';ctx.lineWidth=r*.38;
+  ctx.beginPath();ctx.arc(0,r*.75,r*.9,-Math.PI*.82,-Math.PI*.18);ctx.stroke();
+  for(const sg of[-1,1]){ctx.save();ctx.translate(sg*r*.74,r*.32);ctx.rotate(sg*.6);rr(ctx,-r*.26,-r*.16,r*.52,r*.42,r*.16);ctx.fill();ctx.restore();}ctx.restore();}
+function bubble(txt,col='#dcf8c6',w=150){ctx.fillStyle=col;rr(ctx,-w/2,-32,w,64,18);ctx.fill();stroke(4);rr(ctx,-w/2,-32,w,64,18);ctx.stroke();hand(txt,0,3,36);}
+const PEOPLE=[['Mama','#ff8fa3'],['Lisa','#7fd99b'],['Tom','#5ab0ff'],['Chef','#ffb21e'],['Oma','#c58ae0']];
+function contacts(hi){ctx.fillStyle=GREEN;ctx.fillRect(-138,-252,276,72);bold('Chats',-112,-214,30,'#fff','left');
+  PEOPLE.forEach(([n,c],i)=>{const y=-136+i*80;if(hi===i){ctx.fillStyle='rgba(255,210,63,.65)';ctx.fillRect(-138,y-38,276,76);}
+    ctx.fillStyle=c;ctx.beginPath();ctx.arc(-96,y,26,0,7);ctx.fill();stroke(3);ctx.beginPath();ctx.arc(-96,y,26,0,7);ctx.stroke();
+    hand(n,-56,y-12,34,INK,'left');ctx.fillStyle='#7b756a';ctx.font='600 17px Montserrat, sans-serif';ctx.textAlign='left';ctx.fillText(`+49 15${i+1} ${4821+i*1137} ${10+i*13}`,-56,y+17);
+    ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-60,y+40);ctx.lineTo(138,y+40);ctx.stroke();});}
+function chat(typed,sent){ctx.fillStyle='#e9e2d4';ctx.fillRect(-138,-252,276,522);
+  ctx.fillStyle=GREEN;ctx.fillRect(-138,-252,276,72);ctx.fillStyle='#7fd99b';ctx.beginPath();ctx.arc(-100,-216,22,0,7);ctx.fill();stroke(3,'#fff');ctx.beginPath();ctx.arc(-100,-216,22,0,7);ctx.stroke();bold('Lisa',-68,-216,28,'#fff','left');
+  ctx.fillStyle='#fff';rr(ctx,-128,198,196,54,27);ctx.fill();stroke(3);rr(ctx,-128,198,196,54,27);ctx.stroke();
+  ctx.fillStyle=GREEN;ctx.beginPath();ctx.arc(104,225,28,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(93,211);ctx.lineTo(120,225);ctx.lineTo(93,239);ctx.closePath();ctx.fill();
+  const msg=Array.from('Hallo Lisa!');if(!sent){const n=Math.floor(typed*msg.length);hand(msg.slice(0,n).join('')+(typed>0&&typed<1&&BOIL%2?'|':''),-112,226,30,INK,'left');}}
+function server(t){ctx.fillStyle='rgba(0,0,0,.13)';rr(ctx,-100,-140,220,300,18);ctx.fill();
+  ctx.fillStyle='#d9d3c4';rr(ctx,-110,-150,220,300,18);ctx.fill();stroke(7);rr(ctx,-110,-150,220,300,18);ctx.stroke();
+  for(let i=0;i<4;i++){const y=-128+i*68;ctx.fillStyle='#bcb5a4';rr(ctx,-90,y,180,52,8);ctx.fill();stroke(4);rr(ctx,-90,y,180,52,8);ctx.stroke();
+    for(let k=0;k<3;k++){const on=Math.sin(t*6+i*1.7+k*2.1)>0;ctx.fillStyle=on?(k?GREEN:BLUE):'#7d776a';ctx.beginPath();ctx.arc(46+k*17,y+26,6,0,7);ctx.fill();}
+    stroke(3);ctx.beginPath();ctx.moveTo(-70,y+18);ctx.lineTo(8,y+18);ctx.moveTo(-70,y+34);ctx.lineTo(-14,y+34);ctx.stroke();}}
+function ticks(n,blue){stroke(11,blue?BLUE:'#8f8a80');for(let i=0;i<n;i++){const ox=i*30;ctx.beginPath();ctx.moveTo(ox-26,0);ctx.lineTo(ox-8,18);ctx.lineTo(ox+26,-22);ctx.stroke();}}
+function padlock(col,open=0){ctx.save();ctx.translate(0,-open*22);stroke(11);ctx.beginPath();ctx.moveTo(-26,-26);ctx.lineTo(-26,-46);ctx.arc(0,-46,26,Math.PI,0);ctx.lineTo(26,-26);ctx.stroke();ctx.restore();
+  ctx.fillStyle=col;rr(ctx,-42,-30,84,66,12);ctx.fill();stroke(6);rr(ctx,-42,-30,84,66,12);ctx.stroke();
+  ctx.fillStyle=INK;ctx.beginPath();ctx.arc(0,-2,9,0,7);ctx.fill();ctx.fillRect(-4,0,8,20);}
+function key(col){stroke(7);ctx.fillStyle=col;ctx.beginPath();ctx.arc(-42,0,24,0,7);ctx.fill();ctx.stroke();ctx.fillStyle=PAPER;ctx.beginPath();ctx.arc(-42,0,8,0,7);ctx.fill();ctx.stroke();
+  ctx.fillStyle=col;rr(ctx,-20,-8,84,16,6);ctx.fill();ctx.stroke();rr(ctx,40,6,10,18,3);ctx.fill();ctx.stroke();rr(ctx,56,6,8,12,3);ctx.fill();ctx.stroke();}
+function safeBox(locked,txt){ctx.fillStyle='rgba(0,0,0,.13)';rr(ctx,-66,-42,140,96,12);ctx.fill();ctx.fillStyle='#8d6e4a';rr(ctx,-74,-50,148,100,12);ctx.fill();stroke(6);rr(ctx,-74,-50,148,100,12);ctx.stroke();
+  stroke(4);ctx.beginPath();ctx.moveTo(-74,-20);ctx.lineTo(74,-20);ctx.stroke();if(txt){ctx.fillStyle='#fffdf5';rr(ctx,-58,-10,116,48,6);ctx.fill();hand(txt,0,15,26);}}
+const SALAT='x7#Kq!9äZ@p2&Lw%';
+function salat(n=8){let s='';for(let i=0;i<n;i++)s+=SALAT[(BOIL*7+i*5)%SALAT.length];return s;}
+function stick(x,y,s,t,o={}){return man({x,y,s,t,front:1,color:INK,back:'#4a4540',eye:PAPER,seed:o.seed||0,scared:o.scared,label:o.label});}
+function zzz(x,y,t){for(let i=0;i<3;i++){const p=(t*.6+i/3)%1;ctx.globalAlpha=1-p;hand('z',x+i*18+p*30,y-p*70,30+i*8);}ctx.globalAlpha=1;}
+
+// ---------- Funktions-Icons ----------
+function icon(name,t){
+  switch(name){
+  case 'mic':ctx.fillStyle=GREEN;rr(ctx,-50,-150,100,170,50);ctx.fill();stroke(9);rr(ctx,-50,-150,100,170,50);ctx.stroke();
+    ctx.beginPath();ctx.arc(0,-20,90,0,Math.PI);ctx.stroke();ctx.beginPath();ctx.moveTo(0,70);ctx.lineTo(0,130);ctx.moveTo(-60,130);ctx.lineTo(60,130);ctx.stroke();
+    for(let i=1;i<=3;i++){const a=.5+.5*Math.sin(t*8-i);stroke(6,`rgba(31,29,26,${a})`);ctx.beginPath();ctx.arc(0,-70,90+i*36,-.5,.5);ctx.stroke();ctx.beginPath();ctx.arc(0,-70,90+i*36,Math.PI-.5,Math.PI+.5);ctx.stroke();}break;
+  case 'call':ctx.save();ctx.translate(-130,0);ctx.fillStyle=GREEN;ctx.beginPath();ctx.arc(0,0,95,0,7);ctx.fill();stroke(8);ctx.beginPath();ctx.arc(0,0,95,0,7);ctx.stroke();handset(70,'#fff');ctx.restore();
+    ctx.save();ctx.translate(140,0);ctx.fillStyle=BLUE;rr(ctx,-90,-60,130,120,20);ctx.fill();stroke(8);rr(ctx,-90,-60,130,120,20);ctx.stroke();ctx.beginPath();ctx.moveTo(40,-20);ctx.lineTo(95,-55);ctx.lineTo(95,55);ctx.lineTo(40,20);ctx.closePath();ctx.fillStyle=BLUE;ctx.fill();ctx.stroke();ctx.restore();
+    hand('gratis!',0,140,64,RED);break;
+  case 'group':[[-150,'#ff8fa3'],[0,'#5ab0ff'],[150,'#7fd99b']].forEach(([x,c],i)=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,-30,52,0,7);ctx.fill();stroke(7);ctx.beginPath();ctx.arc(x,-30,52,0,7);ctx.stroke();
+      ctx.beginPath();ctx.arc(x,110,80,Math.PI,0);ctx.fill();ctx.stroke();});
+    for(let i=0;i<6;i++){const a=t*3+i,x=Math.cos(a)*200,y=-150+Math.sin(a*1.3)*30;ctx.save();ctx.translate(x,y);ctx.rotate(Math.sin(a)*.3);ctx.fillStyle='#fff';rr(ctx,-40,-22,80,44,12);ctx.fill();stroke(4);rr(ctx,-40,-22,80,44,12);ctx.stroke();hand(['!!','??','😂','LOL','👍','!!!'][i],0,2,26);ctx.restore();}break;
+  case 'status':ctx.fillStyle='#ffb21e';ctx.beginPath();ctx.arc(0,0,110,0,7);ctx.fill();stroke(8);ctx.beginPath();ctx.arc(0,0,110,0,7);ctx.stroke();
+    const seg=10,left=1-((t*.25)%1);stroke(12,GREEN);for(let i=0;i<seg;i++){if(i/seg>left)break;ctx.beginPath();ctx.arc(0,0,140,-Math.PI/2+i/seg*Math.PI*2+.06,-Math.PI/2+(i+1)/seg*Math.PI*2-.06);ctx.stroke();}
+    bold('24h',0,4,62);break;
+  case 'channel':ctx.save();ctx.rotate(-.2);ctx.fillStyle=RED;ctx.beginPath();ctx.moveTo(-120,-40);ctx.lineTo(60,-120);ctx.lineTo(60,120);ctx.lineTo(-120,40);ctx.closePath();ctx.fill();stroke(9);ctx.stroke();
+    ctx.fillStyle='#fff';rr(ctx,-160,-45,50,90,14);ctx.fill();ctx.stroke();rr(ctx,-110,40,40,90,12);ctx.fill();ctx.stroke();ctx.restore();
+    for(let i=1;i<=3;i++){stroke(6);ctx.beginPath();ctx.arc(80,-30,40+i*34,-.6,.6);ctx.stroke();}break;
+  case 'share':ctx.fillStyle='#fff';rr(ctx,-230,-110,140,180,10);ctx.fill();stroke(7);rr(ctx,-230,-110,140,180,10);ctx.stroke();stroke(5);for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(-210,-70+i*36);ctx.lineTo(-110,-70+i*36);ctx.stroke();}
+    ctx.fillStyle=RED;ctx.beginPath();ctx.arc(120,-60,70,Math.PI*1.05,Math.PI*1.95);ctx.lineTo(120,90);ctx.closePath();ctx.fill();stroke(8);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(120,-60,26,0,7);ctx.fill();ctx.stroke();
+    const r=((t*1.2)%1);stroke(6,`rgba(230,57,70,${1-r})`);ctx.beginPath();ctx.ellipse(120,100,40+r*90,10+r*22,0,0,7);ctx.stroke();
+    ctx.fillStyle=BLUE;rr(ctx,-60,-60,110,90,10);ctx.fill();stroke(7);rr(ctx,-60,-60,110,90,10);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-5,-15,24,0,7);ctx.fill();break;
+  case 'fun':ctx.fillStyle=YEL;ctx.beginPath();ctx.arc(-150,-20,90,0,7);ctx.fill();stroke(8);ctx.beginPath();ctx.arc(-150,-20,90,0,7);ctx.stroke();ctx.fillStyle=INK;ctx.beginPath();ctx.arc(-180,-45,10,0,7);ctx.arc(-120,-45,10,0,7);ctx.fill();ctx.beginPath();ctx.arc(-150,-5,45,.15*Math.PI,.85*Math.PI);ctx.stroke();
+    ctx.fillStyle=RED;ctx.save();ctx.translate(20,-120);ctx.scale(1+.08*Math.sin(t*9),1+.08*Math.sin(t*9));ctx.beginPath();ctx.moveTo(0,30);ctx.bezierCurveTo(-60,-10,-30,-60,0,-30);ctx.bezierCurveTo(30,-60,60,-10,0,30);ctx.fill();stroke(5);ctx.stroke();ctx.restore();
+    ctx.fillStyle='#fff';rr(ctx,60,-40,190,170,14);ctx.fill();stroke(7);rr(ctx,60,-40,190,170,14);ctx.stroke();[.8,.45,.25].forEach((v,i)=>{ctx.fillStyle=[GREEN,BLUE,'#ffb21e'][i];rr(ctx,80,-15+i*48,150*v,30,8);ctx.fill();stroke(4);rr(ctx,80,-15+i*48,150*v,30,8);ctx.stroke();});break;
+  case 'edit':ctx.save();ctx.translate(-120,0);ctx.rotate(.7);ctx.fillStyle=YEL;rr(ctx,-30,-120,60,200,8);ctx.fill();stroke(8);rr(ctx,-30,-120,60,200,8);ctx.stroke();ctx.fillStyle='#f4c69a';ctx.beginPath();ctx.moveTo(-30,80);ctx.lineTo(30,80);ctx.lineTo(0,140);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+    hand('15 min',-120,170,56,RED);
+    ctx.save();ctx.translate(140,10);ctx.fillStyle='#bcb5a4';ctx.beginPath();ctx.moveTo(-70,-60);ctx.lineTo(70,-60);ctx.lineTo(55,110);ctx.lineTo(-55,110);ctx.closePath();ctx.fill();stroke(8);ctx.stroke();ctx.beginPath();ctx.moveTo(-90,-80);ctx.lineTo(90,-80);ctx.moveTo(-25,-80);ctx.lineTo(-25,-100);ctx.lineTo(25,-100);ctx.lineTo(25,-80);ctx.stroke();
+    stroke(5);for(const x of[-30,0,30]){ctx.beginPath();ctx.moveTo(x,-35);ctx.lineTo(x*.8,85);ctx.stroke();}ctx.restore();break;
+  case 'timer':ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-140,10,100,0,7);ctx.fill();stroke(9);ctx.beginPath();ctx.arc(-140,10,100,0,7);ctx.stroke();ctx.beginPath();ctx.moveTo(-140,-90);ctx.lineTo(-140,-120);ctx.moveTo(-165,-125);ctx.lineTo(-115,-125);ctx.stroke();
+    const a=t*2;stroke(8,RED);ctx.beginPath();ctx.moveTo(-140,10);ctx.lineTo(-140+Math.sin(a)*70,10-Math.cos(a)*70);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(150,0,110,66,0,0,7);ctx.fill();stroke(9);ctx.beginPath();ctx.ellipse(150,0,110,66,0,0,7);ctx.stroke();ctx.fillStyle=BLUE;ctx.beginPath();ctx.arc(150,0,40,0,7);ctx.fill();ctx.stroke();bold('1',150,3,46,'#fff');break;
+  case 'web':ctx.fillStyle='#fbfaf5';rr(ctx,-210,-150,340,220,16);ctx.fill();stroke(9);rr(ctx,-210,-150,340,220,16);ctx.stroke();ctx.beginPath();ctx.moveTo(-260,110);ctx.lineTo(180,110);ctx.lineTo(150,70);ctx.lineTo(-230,70);ctx.closePath();ctx.fillStyle='#d9d3c4';ctx.fill();ctx.stroke();
+    ctx.save();ctx.translate(-40,-40);waIcon(56);ctx.restore();
+    ctx.save();ctx.translate(230,10);ctx.scale(.42,.42);phone(()=>{ctx.fillStyle=GREEN;ctx.fillRect(-138,-252,276,522);});ctx.restore();
+    ctx.save();ctx.setLineDash([10,10]);stroke(5);ctx.beginPath();ctx.moveTo(130,-40);ctx.lineTo(170,-40);ctx.stroke();ctx.restore();break;
+  case 'backup':ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-80,0,80,Math.PI*.5,Math.PI*1.5);ctx.arc(10,-60,95,Math.PI,0);ctx.arc(110,10,70,Math.PI*1.5,Math.PI*.5);ctx.closePath();ctx.fill();stroke(9);ctx.stroke();
+    stroke(10,BLUE);ctx.beginPath();ctx.moveTo(10,60);ctx.lineTo(10,-60);ctx.moveTo(-25,-25);ctx.lineTo(10,-60);ctx.lineTo(45,-25);ctx.stroke();
+    ctx.save();ctx.translate(170,110);ctx.scale(.9,.9);padlock(YEL,0);ctx.restore();break;
+  case 'pin':ctx.fillStyle=BLUE;ctx.beginPath();ctx.moveTo(0,-150);ctx.lineTo(130,-100);ctx.lineTo(115,60);ctx.quadraticCurveTo(80,130,0,160);ctx.quadraticCurveTo(-80,130,-115,60);ctx.lineTo(-130,-100);ctx.closePath();ctx.fill();stroke(9);ctx.stroke();
+    ctx.fillStyle='#fff';rr(ctx,-90,-30,180,70,14);ctx.fill();stroke(5);rr(ctx,-90,-30,180,70,14);ctx.stroke();bold('••••••',0,6,42);bold('PIN',0,-80,44,'#fff');break;
+  }}
+const FEAT=['mic','call','group','status','channel','share','fun','edit','timer','web','backup','pin'];
+
+// ---------- Szenen ----------
+const scenes={
+  title:{draw(t){paper(t);
+    at(450,480,popAt(t,.1),1,()=>waIcon(130));
+    at(450,760,popAt(t,.5),2,()=>{bold('WHATSAPP',0,0,96);});
+    at(450,880,popAt(t,.9),3,()=>{ctx.rotate(-.05);marker(-230,-38,460,76);hand('für Dummies',0,0,96,RED);});
+    stick(160,1080,.75,t,{seed:1});if(t>1.2)hand('?',215,820,90,RED);}},
+  phone:{draw(t){paper(t);const p=popAt(t,.05,.5);
+    at(450,560,p,1,()=>phone(()=>{
+      if(S.chat!=null)chat(Math.min(1,Math.max(0,(t-S.type)/1.6)),S.fly!=null);
+      else if(S.list!=null)contacts(S.hiRow);
+      else{ctx.fillStyle='#fbfaf5';ctx.fillRect(-138,-252,276,522);
+        for(let i=0;i<8;i++){const x=-90+(i%3)*90,y=-170+Math.floor(i/3)*110;if(i===4)continue;ctx.fillStyle=['#ffb21e','#5ab0ff','#ff8fa3','#c58ae0','','#7fd99b','#bcb5a4','#5ab0ff'][i];rr(ctx,x-32,y-32,64,64,16);ctx.fill();stroke(3);rr(ctx,x-32,y-32,64,64,16);ctx.stroke();}
+        const s=popAt(t,S.app);if(s>0){ctx.save();ctx.translate(0,-60);ctx.scale(s,s);waIcon(42);ctx.restore();}}
+      if(S.fly!=null){const f=Math.max(0,t-S.fly);ctx.save();ctx.translate(40,120-f*900);bubble('Hallo Lisa!','#dcf8c6',170);ctx.restore();}
+    }));
+    if(S.fly!=null&&t-S.fly>.25){const f=t-S.fly;at(560,560-f*700,1,4,()=>bubble('Hallo Lisa!','#dcf8c6',170));}
+    if(S.hiRow===1&&S.list!=null&&S.chat==null){at(700,500,popAt(t,S.hiT),5,()=>{ctx.rotate(.08);hand('= Mensch',0,0,58,RED);hand('+ Nummer',0,60,46,INK);});}
+    if(S.tapT!=null&&t-S.tapT<.5){const r=(t-S.tapT)/.5;stroke(6,`rgba(230,57,70,${1-r})`);ctx.beginPath();ctx.arc(420,504,20+r*50,0,7);ctx.stroke();}
+  }},
+  net:{draw(t){paper(t);
+    const A=[180,690],SV=[450,420],B=[720,690];
+    if(S.direct!=null){const p=fadeAt(t,S.direct);ctx.globalAlpha=p;dash([240,820],[450,900],[660,820]);stroke(14,RED);const c=[450,872];ctx.beginPath();ctx.moveTo(c[0]-40,c[1]-40);ctx.lineTo(c[0]+40,c[1]+40);ctx.moveTo(c[0]+40,c[1]-40);ctx.lineTo(c[0]-40,c[1]+40);ctx.stroke();ctx.globalAlpha=1;}
+    const sp=popAt(t,S.srv,.5);
+    if(sp>0){dash(A,[240,420],[340,420]);dash([560,420],[660,420],B);}
+    at(SV[0],SV[1],sp,1,()=>{server(t);});
+    if(sp>0){hand('SERVER',SV[0],SV[1]-195,48);hand('(Computer von WhatsApp)',SV[0],SV[1]-150+0,30,'#6b6253');}
+    at(180,850,.5,2,()=>phone(()=>{ctx.fillStyle='#e9e2d4';ctx.fillRect(-138,-252,276,522);ctx.fillStyle=GREEN;ctx.fillRect(-138,-252,276,72);}));
+    hand('DU',180,1040,54);
+    const on=S.on!=null&&t>S.on;
+    at(720,850,.5,3,()=>phone(()=>{ctx.fillStyle='#e9e2d4';ctx.fillRect(-138,-252,276,522);ctx.fillStyle=GREEN;ctx.fillRect(-138,-252,276,72);
+      if(S.f2!=null&&t>S.f2+1.1){ctx.save();ctx.translate(0,-60);ctx.scale(1.6,1.6);bubble('Hallo!','#fff',140);ctx.restore();}},{off:S.off&&!on}));
+    hand('FREUND',720,1040,54);
+    if(S.off&&!on)zzz(770,660,t);
+    // Nachricht unterwegs
+    const fly=(t0,a,c,b,d=1.1)=>{const p=ease((t-t0)/d);const q=qp(a,c,b,p);at(q[0],q[1],1,6,()=>bubble('Hallo!','#dcf8c6',140));};
+    if(S.f1!=null&&t>S.f1&&(S.f2==null||t<S.f2))(t-S.f1<1.1)?fly(S.f1,A,[240,420],[340,420]):at(SV[0],SV[1]+20,.8,7,()=>bubble('Hallo!','#dcf8c6',140));
+    if(S.f2!=null&&t>S.f2&&t<S.f2+1.1)fly(S.f2,[560,420],[660,420],B);
+    if(S.ticks)at(330,690,popAt(t,S.tickT,.3),8,()=>ticks(S.ticks,S.blue));
+    if(S.wait!=null&&S.f2==null){at(450,640,popAt(t,S.wait),9,()=>{ctx.rotate(-.05);marker(-150,-30,300,60);hand('wartet… max. 30 Tage',0,0,40,INK);});}
+    if(S.del!=null){const p=fadeAt(t,S.del,.4);at(SV[0],SV[1]+20,p,10,()=>{ctx.rotate(-.15);stroke(8,RED);rr(ctx,-110,-34,220,68,10);ctx.stroke();bold('GELÖSCHT',0,2,40,RED);});}
+    if(S.q!=null)at(SV[0]+150,SV[1]-60,popAt(t,S.q),11,()=>hand('?',0,0,150,RED));
+  }},
+  lock:{draw(t){paper(t);
+    const SV=[450,330];
+    at(SV[0],SV[1],.62,1,()=>server(t));hand('SERVER',SV[0],SV[1]-125,42);
+    at(170,820,.5,2,()=>phone(()=>{ctx.fillStyle='#e9e2d4';ctx.fillRect(-138,-252,276,522);ctx.fillStyle=GREEN;ctx.fillRect(-138,-252,276,72);}));hand('DU',170,1010,50);
+    at(730,820,.5,3,()=>phone(()=>{ctx.fillStyle='#e9e2d4';ctx.fillRect(-138,-252,276,522);ctx.fillStyle=GREEN;ctx.fillRect(-138,-252,276,72);
+      if(S.open!=null&&t>S.open+.5){ctx.save();ctx.translate(0,-40);ctx.scale(1.6,1.6);bubble('Hallo!','#fff',140);ctx.restore();}}));hand('FREUND',730,1010,50);
+    // Schlösser & Schlüssel: Du = blau, Freund = grün
+    at(80,560,popAt(t,S.locks),4,()=>{ctx.scale(.75,.75);padlock(BLUE,1);});at(260,560,popAt(t,S.keys),5,()=>{ctx.scale(.75,.75);key(BLUE);});
+    at(640,560,popAt(t,S.locks),6,()=>{ctx.scale(.75,.75);padlock(GREEN,1);});at(820,560,popAt(t,S.keys),7,()=>{ctx.scale(.75,.75);key(GREEN);});
+    if(S.keys!=null&&t>S.keys+.4){hand('geheim!',820,620,34,RED);hand('geheim!',260,620,34,RED);}
+    if(S.stay!=null){const p=fadeAt(t,S.stay);ctx.globalAlpha=p;stroke(6,RED);ctx.beginPath();ctx.ellipse(260,560,90,55,0,0,7);ctx.stroke();ctx.beginPath();ctx.ellipse(820,560,90,55,0,0,7);ctx.stroke();ctx.globalAlpha=1;}
+    // Freund-Schloss wird kopiert und wandert zu dir
+    if(S.share!=null){const p=ease((t-S.share)/1.2);const q=qp([640,560],[450,470],[300,760],p);at(q[0],q[1],.7,8,()=>padlock(GREEN,S.lockT!=null&&t>S.lockT?0:1));if(p>=1&&S.lockT==null)hand('Kopie',300,690,32,'#6b6253');}
+    // Nachricht im Kasten
+    let box=[300,830];if(S.carry!=null){const c=t-S.carry;if(c<1.2)box=qp([300,830],[300,330],[SV[0]-30,SV[1]+140],ease(c/1.2));else if(c<2)box=[SV[0]-30,SV[1]+140];else box=qp([SV[0]-30,SV[1]+140],[620,330],[600,830],ease((c-2)/1.2));}
+    if(S.msg!=null&&!(S.open!=null&&t>S.open+.5)){const txt=S.scr!=null&&t>S.scr?salat(7):'Hallo!';at(box[0],box[1],popAt(t,S.msg),9,()=>{safeBox(S.lockT!=null&&t>S.lockT,txt);if(S.lockT!=null&&t>S.lockT){ctx.save();ctx.translate(0,62);ctx.scale(.55,.55);padlock(GREEN,S.open!=null&&t>S.open?1:0);ctx.restore();}});}
+    if(S.carry!=null&&t-S.carry>1.1&&t-S.carry<2.1){at(SV[0]+130,SV[1]+90,1,10,()=>{hand('?',0,0,110,RED);hand('kein Schlüssel',0,70,32,RED);});}
+    if(S.open!=null&&t>S.open&&t<S.open+.8)at(640,830,1,11,()=>{ctx.scale(.7,.7);key(GREEN);});
+    if(S.all!=null){const p=popAt(t,S.all);[['call',-150],['share',0],['mic',150]].forEach(([n,x],i)=>at(450+x,800,p*.24,12+i,()=>{icon(n,t);ctx.translate(120,120);ctx.scale(1.6,1.6);padlock(YEL,0);}));}
+    if(S.meta!=null){at(SV[0],SV[1]+250,popAt(t,S.meta),15,()=>{ctx.rotate(-.04);ctx.fillStyle='#fff7b0';rr(ctx,-190,-60,380,128,6);ctx.fill();stroke(4);rr(ctx,-190,-60,380,128,6);ctx.stroke();
+      hand('DU → FREUND · 18:42',0,-22,40);hand('Inhalt: ???',0,30,38,RED);});}
+  }},
+  feat:{draw(t){paper(t);const f=S.feat;if(!f)return;const p=popAt(t,S.featT,.45);
+    at(450,560,p*1.35,1,()=>icon(f,t));
+    at(450,930,p,2,()=>{ctx.rotate(-.03);ctx.font='700 72px Caveat, cursive';const w=ctx.measureText(S.label).width+60;marker(-w/2,-34,w,68);hand(S.label,0,0,72);});
+    hand(`Funktion ${FEAT.indexOf(f)+1}/${FEAT.length}`,860,180,34,'#6b6253','right');}},
+  end:{draw(t){paper(t);for(let i=0;i<40;i++){const x=(i*97+t*60*(i%3+1))%900,y=((i*53)+t*(120+i*4))%1100;ctx.fillStyle=[GREEN,BLUE,RED,YEL][i%4];ctx.save();ctx.translate(x,y);ctx.rotate(t*3+i);ctx.fillRect(-8,-4,16,8);ctx.restore();}
+    const m=stick(450,1050,1.3,t,{seed:2,label:DU});
+    at(m.head[0],m.head[1]-m.r*1.05,1,1,()=>{ctx.fillStyle=INK;ctx.beginPath();ctx.moveTo(-70,0);ctx.lineTo(0,-28);ctx.lineTo(70,0);ctx.lineTo(0,28);ctx.closePath();ctx.fill();rr(ctx,-34,0,68,30,6);ctx.fill();stroke(4,YEL);ctx.beginPath();ctx.moveTo(40,0);ctx.lineTo(60,50);ctx.stroke();});
+    at(450,380,popAt(t,.3),2,()=>{ctx.rotate(-.04);ctx.fillStyle='#fffdf5';rr(ctx,-250,-90,500,180,10);ctx.fill();stroke(6);rr(ctx,-250,-90,500,180,10);ctx.stroke();
+      hand('DIPLOM',0,-40,64,RED);hand('WhatsApp-Profi',0,30,58);});}},
+};
+
+// ---------- Ablauf ----------
+async function feature(text,name,label,idx=0,o){await capAt(text,idx,()=>{S.feat=name;S.label=label;S.featT=now();sfx('pop',.6);},o);}
+async function story(){
+  go('title');hud(false);await sleep(200);sfx('pop',.6);
+  await cap('WhatsApp. Erklärt für *Dummies.*',{big:1});
+  go('phone');hud(true);clock('01','BASICS');sfx('scribble',.5);
+  await cap('Du hast #Handy.');
+  await capAt('Handy hat *WhatsApp.*',2,()=>{S.app=now();sfx('pop',.7);});
+  await capAt('In WhatsApp du siehst *Kontakte.*',4,()=>{S.tapT=now();S.list=now();sfx('tap',.8);});
+  await capAt('Kontakt ist Mensch. Mit ~Handynummer.',2,()=>{S.hiRow=1;S.hiT=now();sfx('pop',.5);});
+  await capWords('Du tippst auf Mensch. Du schreibst *Nachricht.*',i=>{if(i===1){S.tapT=now();sfx('tap',.8);}if(i===3){S.chat=now();S.type=now()+.2;}if(i>=4&&i<=6)sfx('tap',.5);});
+  await capAt('Du drückst Senden. Nachricht fliegt #los.',2,()=>{S.tapT=now();sfx('tap',.8);setTimeout(()=>{S.fly=now();sfx('whoosh',.6);},350);});
+  go('net');clock('02','SERVER');
+  await capAt('Aber: Nachricht fliegt nicht direkt zu Freund.',4,()=>{S.direct=now();sfx('hit',.35);});
+  S.direct=null;
+  await capAt('Erst fliegt sie zu *Server.* Großer Computer von WhatsApp.',4,()=>{S.srv=now();sfx('pop',.7);setTimeout(()=>{S.f1=now();sfx('whoosh',.5);},300);});
+  S.off=true;
+  await capAt('Server hat Nachricht: *ein* grauer Haken.',3,()=>{S.ticks=1;S.tickT=now();sfx('ding',.5);});
+  await capAt('Freund-Handy ist aus? Server #wartet. Bis zu 30 Tage.',4,()=>{S.wait=now();sfx('tick',.4);});
+  await capWords('Freund-Handy geht an: Server schickt weiter. *Zwei* Haken.',i=>{if(i===2){S.on=now();sfx('buzz',.4);}if(i===4){S.f2=now();sfx('whoosh',.5);}if(i===6){S.ticks=2;S.tickT=now();sfx('ding',.5);}});
+  await capAt('Freund liest. Haken werden ~blau.',4,()=>{S.blue=true;S.tickT=now();sfx('ding',.6);});
+  await capAt('Dann löscht Server Nachricht. Server #vergisst.',1,()=>{S.del=now();sfx('scribble',.5);});
+  await capAt('Aber Moment: Kann Server deine Nachricht #lesen?',6,()=>{S.q=now();sfx('pop',.6);});
+  go('lock');clock('03','VERSCHLÜSSELUNG');
+  const e=card(`<div class="ln box" style="--c:var(--lime)"><span class="pill lime">SCHUTZ</span><div class="big">ENDE-ZU-ENDE</div><div class="mid">VERSCHLÜSSELUNG</div></div>`,{top:'13%'});
+  await capAt('#Nein. Wegen *Ende-zu-Ende-Verschlüsselung.*',0,()=>sfx('hit',.4));
+  await out(e);
+  await capWords('Jedes Handy hat ein offenes ~Schloss. Und einen geheimen *Schlüssel.*',i=>{if(i===5){S.locks=now();sfx('click',.6);}if(i===9){S.keys=now();sfx('pop',.6);}});
+  await capWords('Schloss darf jeder haben. Schlüssel bleibt #immer auf Handy.',i=>{if(i===1){S.share=now();sfx('whoosh',.4);}if(i===6){S.stay=now();sfx('scribble',.4);}});
+  await capWords('Du schreibst Freund: Handy schließt Nachricht mit *Freund-Schloss* ab.',i=>{if(i===1){S.msg=now();sfx('pop',.6);}if(i===8){S.lockT=now();sfx('click',.8);}});
+  await capAt('Jetzt ist Nachricht nur noch #Buchstabensalat.',5,()=>{S.scr=now();sfx('static',.3);});
+  await capAt('Server trägt Salat. Server hat #keinen Schlüssel.',0,()=>{S.carry=now();sfx('whoosh',.5);setTimeout(()=>sfx('whoosh',.5),2000);});
+  await capAt('Nur Freund-Handy hat passenden *Schlüssel.* Nur Freund kann lesen.',4,()=>{S.open=now();sfx('click',.8);setTimeout(()=>sfx('ding',.5),500);});
+  await capAt('Auch Anrufe, Fotos und Sprachnachrichten: alles *verschlüsselt.*',0,()=>{S.all=now();sfx('pop',.6);});
+  await capAt('Aber: Server weiß trotzdem, #wer wem schreibt. Und wann.',4,()=>{S.meta=now();sfx('scribble',.5);});
+  go('feat');clock('04','FUNKTIONEN');S.feat=null;
+  await cap('Jetzt schnell: Was WhatsApp noch *kann.*',{big:1});
+  await feature('~Sprachnachricht: Du redest statt tippen.','mic','Sprachnachricht');
+  await feature('~Anruf und ~Videoanruf: gratis übers Internet.','call','Anruf & Video');
+  await feature('~Gruppe: viele Menschen, ein Chat. Viel #Chaos.','group','Gruppen');
+  await feature('~Status: Foto für 24 Stunden. Dann *weg.*','status','Status');
+  await feature('~Kanäle: Andere posten. Du nur liest.','channel','Kanäle');
+  await feature('Fotos, Dokumente, ~Standort: alles schicken. Sogar *live.*','share','Dateien & Standort');
+  await feature('Sticker, Reaktionen, ~Umfragen.','fun','Sticker & Umfragen');
+  await feature('Falsch getippt? 15 Minuten ~bearbeiten. Oder für alle *löschen.*','edit','Bearbeiten & Löschen');
+  await feature('~Selbstlöschende Nachrichten. Und Fotos zum ~Einmal-Ansehen.','timer','Verschwinden');
+  await feature('WhatsApp Web: Chats auch auf *Computer.*','web','WhatsApp Web');
+  await feature('~Backup: Chats in Cloud. Tipp: Backup auch #verschlüsseln!','backup','Backup');
+  await feature('Verifizierung in zwei Schritten: Extra-PIN gegen *Diebe.*','pin','Zwei-Schritt-PIN');
+  go('end');hud(false);sfx('pop',.7);
+  await cap('Fertig. Du bist kein #Dummy mehr.',{big:1});
+  dimT=.35;outro('NEUE SERIE','MEHR <span class="hl">DUMMIES</span>','WELCHE FUNKTION KANNTEST DU NICHT? 👇');
+  await cap('Welche Funktion kanntest du *nicht?* Schreib es in die Kommentare.');
+  await sleep(3500);finish();
+}
+boot('title');
+</script>
+</body>
+</html>

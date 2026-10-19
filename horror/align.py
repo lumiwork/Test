@@ -8,7 +8,7 @@ import difflib, json, os, re, sys
 from pathlib import Path
 
 ZAHLEN = {"vierzig": "40", "drei": "3", "vier": "4", "zwölf": "12", "dreizehn": "13", "vierzehn": "14", "siebzehn": "17",
-          "zweiundzwanzig": "22", "dreiundzwanzig": "23", "fünfundzwanzig": "25", "dreißig": "30", "zweitausendneunzehn": "2019"}
+          "zweiundzwanzig": "22", "dreiundzwanzig": "23", "fünfundzwanzig": "25", "dreißig": "30", "fünfzehn": "15", "vierundzwanzig": "24", "zweitausendneunzehn": "2019"}
 
 
 def norm(w):
@@ -18,7 +18,7 @@ def norm(w):
 
 def captions(n):
     html = Path(os.environ.get("SEITE", Path(__file__).parent / "index.html")).read_text(encoding="utf-8")
-    lines = re.findall(r"\bcap(?:At|Words)?\('([^']*)'", html)[:n]
+    lines = re.findall(r"\b(?:cap(?:At|Words)?|feature)\('([^']*)'", html)[:n]
     return [[re.sub(r"[*#~]", "", w) for w in l.split()] for l in lines]
 
 

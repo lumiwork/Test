@@ -9,5 +9,5 @@ import sys
 from pathlib import Path
 
 html = Path(sys.argv[1]).read_text(encoding="utf-8")
-lines = [re.sub(r"[*#~]", "", l) for l in re.findall(r"\bcap(?:At|Words)?\('([^']*)'", html)]
+lines = [re.sub(r"[*#~]", "", l) for l in re.findall(r"\b(?:cap(?:At|Words)?|feature)\('([^']*)'", html)]
 print(" [pause]\n".join(lines))
