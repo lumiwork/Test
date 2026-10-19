@@ -1,6 +1,6 @@
 """Ordnet die Wort-Zeitstempel einer Transkription den Untertiteln aus index.html zu.
 
-Aufruf: [SEITE=pfad/index.html] python3 align.py transkript.json|aufnahme.mp3 voice.json [anzahl_saetze]
+Aufruf: [SEITE=pfad/index.html] [TEMPO=1.1] python3 align.py transkript.json|aufnahme.mp3 voice.json [anzahl_saetze]
 transkript.json: Liste von Wörtern mit text/start/end (Sekunden) – z. B. aus ElevenLabs Scribe.
 Ergebnis voice.json: pro Untertitel-Zeile Start (s), Ende (e) und die Startzeit jedes Wortes relativ zu s (w).
 """
@@ -17,7 +17,7 @@ def norm(w):
 
 def captions(n):
     html = Path(os.environ.get("SEITE", Path(__file__).parent / "index.html")).read_text(encoding="utf-8")
-    lines = re.findall(r"\bcap(?:At)?\('([^']*)'", html)[:n]
+    lines = re.findall(r"\bcap(?:At|Words)?\('([^']*)'", html)[:n]
     return [[re.sub(r"[*#~]", "", w) for w in l.split()] for l in lines]
 
 
@@ -139,6 +139,9 @@ def main():
         s = st[0]
         out.append({"text": " ".join(l), "s": round(s, 3), "e": round(en[-1], 3), "w": [round(x - s, 3) for x in st]})
         i += len(l)
+    tempo = float(os.environ.get("TEMPO", "1"))  # Stimme mit atempo beschleunigt → Zeiten mitskalieren
+    for l in out:
+        l["s"], l["e"], l["w"] = round(l["s"] / tempo, 3), round(l["e"] / tempo, 3), [round(x / tempo, 3) for x in l["w"]]
     Path(sys.argv[2]).write_text(json.dumps({"lines": out}, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"{hits}/{len(flat)} Wörter direkt zugeordnet")
     for l in out:

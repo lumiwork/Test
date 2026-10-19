@@ -465,7 +465,7 @@ async function story(){
   go('counter');S.scared=true;S.phoneHand=true;S.lowLight=true;S.behindFinal=.95;S.time='03:02';clock('03:02','KASSE');bed('drone',.18);bed('heart',.6);bed('rain',.1);
   dimT=.35;
   const q=card(`<span class="ln pill">DEINE WAHL</span><div class="ln title" style="--d:.12s">ENTWEDER…</div><div class="ln title hl" style="--d:.26s">ODER?</div>`,{top:'11%'});
-  const ab=card(`<div class="ln opt2" style="--c:var(--lime)"><b>A</b>📞 DU GEHST RAN</div><div class="ln opt2" style="--c:var(--red);--d:.15s"><b>B</b>👀 DU DREHST DICH UM</div>`,{top:'25%'});
+  const ab=card(`<div class="ln opt2" style="--c:var(--lime)"><b>A</b>📞 DU GEHST RAN</div><div class="ln opt2" style="--c:var(--red);--d:.15s"><b>B</b>👀 DU DREHST DICH UM</div>`,{top:'32%'});
   await cap('Gehst du *ran?* Oder drehst du dich #um?',{big:1});
   await sleep(2500);out(q);out(ab);
   dimT=.75;hud(false);

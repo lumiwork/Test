@@ -161,10 +161,103 @@ def drone():
     return norm(loop_fade(x), -10)
 
 
+def ding():
+    n = int(2.2 * SR)
+    tt = t(2.2)
+    x = np.zeros(n)
+    for start, f in [(0, 1318.5), (0.35, 1046.5)]:
+        p = int(start * SR)
+        seg = (np.sin(2 * np.pi * f * tt[:n - p]) + 0.3 * np.sin(2 * np.pi * 2 * f * tt[:n - p])) * env(n - p, 0.003, 0.6)
+        x[p:] += seg
+    return norm(x, -6)
+
+
+def door():
+    n = int(1.4 * SR)
+    tt = t(1.4)
+    x = band(rng.standard_normal(n), 120, 1500) * np.sin(np.pi * tt / 1.4) ** 1.2
+    x += np.sin(2 * np.pi * 60 * tt) * 0.2 * np.sin(np.pi * tt / 1.4)
+    x[-int(0.12 * SR):] += np.sin(2 * np.pi * 80 * tt[:int(0.12 * SR)]) * env(int(0.12 * SR), 0.002, 0.03) * 2
+    return norm(x, -6)
+
+
+def wind():
+    tt = t(12.5)
+    noise = rng.standard_normal(len(tt))
+    x = band(noise, 150, 900) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.13 * tt) * np.sin(2 * np.pi * 0.07 * tt + 1))
+    x += band(noise, 900, 2500) * 0.25 * (0.5 + 0.5 * np.sin(2 * np.pi * 0.21 * tt))
+    return norm(loop_fade(x), -8)
+
+
+def creak():
+    n = int(1.3 * SR)
+    tt = t(1.3)
+    f = 180 + 70 * np.sin(2 * np.pi * 0.8 * tt) + 25 * rng.standard_normal(n).cumsum() / np.sqrt(n)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    x = (np.sin(ph) + 0.6 * np.sin(2 * ph) + 0.4 * np.sin(3.1 * ph)) * (np.sin(np.pi * tt / 1.3) ** 2)
+    x *= 0.6 + 0.4 * (rng.random(n) > 0.4)
+    return norm(band(x, 150, 3000), -6)
+
+
+def fire():
+    tt = t(12.5)
+    n = len(tt)
+    x = band(rng.standard_normal(n), 100, 1200) * 0.3
+    for _ in range(500):
+        p = rng.integers(0, n - 800)
+        x[p:p + 800] += band(rng.standard_normal(800), 1500, 8000) * env(800, 0.0003, 0.003) * rng.uniform(0.2, 1)
+    return norm(loop_fade(x), -10)
+
+
+def whisper():
+    n = int(2.6 * SR)
+    tt = t(2.6)
+    syl = np.clip(np.sin(2 * np.pi * 3.1 * tt) * np.sin(2 * np.pi * 0.7 * tt + 0.5), 0, 1) ** 1.5
+    x = band(rng.standard_normal(n), 1200, 5000) * syl + band(rng.standard_normal(n), 400, 1200) * syl * 0.4
+    return norm(x * np.sin(np.pi * tt / 2.6), -8)
+
+
+def drip():
+    n = int(0.5 * SR)
+    tt = t(0.5)
+    f = 900 + 1400 * np.exp(-tt * 40)
+    x = np.sin(2 * np.pi * np.cumsum(f) / SR) * env(n, 0.001, 0.05)
+    return norm(x, -8)
+
+
+def train():
+    tt = t(12.5)
+    n = len(tt)
+    x = band(rng.standard_normal(n), 30, 300) * 0.7 + np.sin(2 * np.pi * 45 * tt) * 0.15
+    for k in np.arange(0, 12.5, 0.85):  # Schienenstöße
+        for dk in (0, 0.13):
+            p = int((k + dk) * SR)
+            L = int(0.12 * SR)
+            if p + L < n:
+                x[p:p + L] += band(rng.standard_normal(L), 80, 900) * env(L, 0.001, 0.025) * 1.4
+    return norm(loop_fade(x), -8)
+
+
+def glass():
+    n = int(0.5 * SR)
+    x = band(rng.standard_normal(n), 2500, 9000) * env(n, 0.0005, 0.02)
+    for f in (2900, 4100, 5600):
+        x += np.sin(2 * np.pi * f * t(0.5)) * env(n, 0.0005, 0.12) * 0.25
+    return norm(x, -5)
+
+
+def speaker():
+    n = int(0.9 * SR)
+    x = band(rng.standard_normal(n), 800, 4000) * (rng.random(n) > 0.3) * np.minimum(1, np.linspace(0, 10, n)) * np.linspace(1, 0, n) ** 0.5
+    return norm(x, -9)
+
+
 if __name__ == "__main__":
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "sounds")
     out.mkdir(parents=True, exist_ok=True)
     for name, fn in [("rain", rain), ("hum", hum), ("tick", tick), ("knock", knock), ("flicker", flicker), ("static", static),
-                     ("hit", hit), ("buzz", buzz), ("heart", heart), ("whoosh", whoosh), ("drone", drone)]:
+                     ("hit", hit), ("buzz", buzz), ("heart", heart), ("whoosh", whoosh), ("drone", drone), ("ding", ding),
+                     ("door", door), ("wind", wind), ("creak", creak), ("fire", fire), ("whisper", whisper), ("drip", drip),
+                     ("train", train), ("glass", glass), ("speaker", speaker)]:
         save(out / f"{name}.wav", fn())
         print("✓", name)

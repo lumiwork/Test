@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Etage 13</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i>HOCHHAUS</div><div id="clock">23:58</div><div id="loc">AUFZUG 2</div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">ETAGE 13 · HORROR</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script>
+// ---------- Aufzug ----------
+function steel(x,y,w,h,c1='#6a7392',c2='#434b68'){const g=ctx.createLinearGradient(x,0,x+w,0);g.addColorStop(0,c1);g.addColorStop(.5,c2);g.addColorStop(1,c1);ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=2;ctx.beginPath();for(let i=x;i<x+w;i+=9){ctx.moveTo(i,y);ctx.lineTo(i,y+h);}ctx.stroke();}
+function display(x,y,txt,t,glitch){ctx.fillStyle='#07080c';rr(ctx,x-130,y-60,260,120,14);ctx.fill();ctx.strokeStyle='#2a3150';ctx.lineWidth=5;rr(ctx,x-130,y-60,260,120,14);ctx.stroke();
+  const gx=glitch?(Math.random()-.5)*14:0;ctx.fillStyle='#ff3b4a';ctx.font='800 82px JetBrains Mono, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,x+gx,y+4);
+  if(S.moving){ctx.font='800 34px Montserrat, sans-serif';ctx.fillText('▲',x-95,y+2);}
+  glow(x,y,200,'255,59,74',.18);}
+function corridor(t,x0,y0,w,h){
+  ctx.save();ctx.beginPath();ctx.rect(x0,y0,w,h);ctx.clip();ctx.fillStyle='#05070f';ctx.fillRect(x0,y0,w,h);
+  const vx=x0+w/2,vy=y0+h*.45,bw=60,bh=90;
+  ctx.fillStyle='#10152a';ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(vx-bw/2,vy-bh/2);ctx.lineTo(vx-bw/2,vy+bh/2);ctx.lineTo(x0,y0+h);ctx.fill();
+  ctx.beginPath();ctx.moveTo(x0+w,y0);ctx.lineTo(vx+bw/2,vy-bh/2);ctx.lineTo(vx+bw/2,vy+bh/2);ctx.lineTo(x0+w,y0+h);ctx.fill();
+  ctx.fillStyle='#0b1022';ctx.beginPath();ctx.moveTo(x0,y0+h);ctx.lineTo(vx-bw/2,vy+bh/2);ctx.lineTo(vx+bw/2,vy+bh/2);ctx.lineTo(x0+w,y0+h);ctx.fill();
+  ctx.strokeStyle='rgba(120,140,200,.12)';ctx.lineWidth=2;ctx.beginPath();for(let i=1;i<6;i++){const f=i/6,y=y0+h-(h/2-bh/2)*Math.pow(f,.6);ctx.moveTo(x0+(vx-bw/2-x0)*Math.pow(f,.6),y);ctx.lineTo(x0+w-(x0+w-vx-bw/2)*Math.pow(f,.6),y);}ctx.stroke();
+  const fl=Math.sin(t*17)>.9?.3:1;glow(vx,vy-bh*.8,90,'90,255,140',.25*fl);ctx.fillStyle=`rgba(90,255,140,${.8*fl})`;ctx.fillRect(vx-18,vy-bh*.8-6,36,12);
+  if(S.figure){ctx.globalAlpha=.95;creature(vx,vy+bh/2+90,.34,t,{tilt:S.turn!=null?ease((t-S.turn)/2.2)*.9:0,rim:'rgba(170,190,255,.6)'});ctx.globalAlpha=1;}
+  ctx.restore();}
+function cabin(t,o={}){
+  const sh=S.moving?(Math.random()-.5)*3:0;ctx.save();ctx.translate(sh,sh*.5);
+  steel(0,0,VW,VH,'#4d5573','#363d58');
+  ctx.fillStyle='#2a304a';ctx.fillRect(0,0,VW,70);for(let x=80;x<VW;x+=150){ctx.fillStyle='#dfe8ff';ctx.fillRect(x,58,90,8);}
+  ctx.fillStyle='#1b2036';ctx.beginPath();ctx.arc(450,170,40,0,7);ctx.fill();ctx.fillStyle='#0b0e1a';for(let i=0;i<12;i++){const a=i/12*Math.PI*2;ctx.beginPath();ctx.arc(450+Math.cos(a)*22,170+Math.sin(a)*22,4,0,7);ctx.fill();}
+  const op=ease(S.door!=null?(t-S.door)/1.6:0)*(S.doorClosed?0:1),dx=210*op;
+  corridor(t,240,430,420,790);
+  steel(240-dx,430,210,790,'#7b84a3','#555d7c');steel(450+dx,430,210,790,'#7b84a3','#555d7c');
+  ctx.strokeStyle='#22283f';ctx.lineWidth=16;ctx.strokeRect(232,422,436,806);
+  display(450,330,S.floor||'EG',t,S.glitch);
+  ctx.fillStyle='#262c45';rr(ctx,712,520,150,470,16);ctx.fill();
+  const labels=['12','11','10','9','8','7','6','5','4','3','2','1','EG','🔔'];
+  labels.forEach((l,i)=>{const bx=752+(i%2)*70,by=565+((i/2)|0)*58,lit=(l===S.pressed)||(l==='🔔'&&S.alarm);ctx.fillStyle=l==='🔔'?'#a8323e':lit?'#ffcf5a':'#c3c9dd';ctx.beginPath();ctx.arc(bx,by,22,0,7);ctx.fill();
+    if(lit)glow(bx,by,60,'255,207,90',.4);ctx.fillStyle='#141828';ctx.font=`800 ${l.length>1?18:22}px Montserrat, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(l,bx,by+1);});
+  ctx.fillStyle='#1d2238';ctx.fillRect(0,1228,VW,372);ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=3;ctx.beginPath();for(let x=0;x<VW;x+=40){ctx.moveTo(x,1228);ctx.lineTo(x,1600);}ctx.stroke();
+  ctx.fillStyle='#8890ad';ctx.fillRect(0,1000,200,12);ctx.fillRect(700,1000,200,12);
+  man({x:150,y:1330,s:1.15,t,front:1,scared:o.scared,label:DU,look:o.look||0});
+  ctx.restore();
+}
+function lobby(t){
+  ctx.fillStyle=pat('wall',wallC);ctx.fillRect(0,0,VW,VH);ctx.fillStyle='rgba(10,14,32,.35)';ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle='#141a33';ctx.fillRect(0,1180,VW,420);ctx.fillStyle=pat('floor',floorC);ctx.globalAlpha=.6;ctx.fillRect(0,1180,VW,420);ctx.globalAlpha=1;
+  ctx.fillStyle='#22283f';ctx.fillRect(230,420,440,780);const op=ease((t-1)/1.6);steel(250-180*op,440,200,760,'#7b84a3','#555d7c');steel(450+180*op,440,200,760,'#7b84a3','#555d7c');
+  ctx.fillStyle='#0b0e1a';rr(ctx,380,330,140,70,10);ctx.fill();ctx.fillStyle='#ff3b4a';ctx.font='800 48px JetBrains Mono, monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('EG',450,367);
+  ctx.fillStyle='#262c45';rr(ctx,710,720,60,110,10);ctx.fill();ctx.fillStyle='#ffcf5a';ctx.beginPath();ctx.arc(740,775,16,0,7);ctx.fill();
+  glow(450,800,420,'230,236,255',.12*op);
+  man({x:450,y:1300,s:1.15,t,walk:t<2?0:0,front:1,label:DU});
+}
+const scenes={
+  lobby:{draw(t){lobby(t);darkness(.3,[{x:450,y:800,r:600,a:.6}]);}},
+  cabin:{draw(t){const fl=S.flick&&Math.random()<.35;cabin(t,{scared:S.scared});darkness(fl?.8:S.dark?.45:.15,[{x:450,y:330,r:260,a:.6},{x:450,y:780,r:520,a:.4}]);}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('lobby');hud(false);bed('drone',.14);await sleep(300);
+  await cap('Stell dir vor… du steigst nachts allein in einen *Aufzug.*',{big:1});
+  go('cabin');hud(true);clock('23:58','AUFZUG 2');S.floor='EG';bed('hum',.12);sfx('door',.4);
+  await capWords('Du drückst die 7. Doch der Aufzug fährt #nach #oben.',i=>{if(i===3){S.pressed='7';sfx('tick',.5);}if(i>=4){S.moving=true;S.floor=String(Math.min(7,1+Math.round((i-4)*1.2)));sfx('tick',.25);}});
+  await capWords('8… 9… 10… 11… 12…',i=>{S.floor=String(8+i);sfx('tick',.45);});
+  await capAt('Und dann hält er. Auf Etage ~13.',6,()=>{S.moving=false;S.floor='13';S.glitch=true;sfx('ding',.7);clock('23:59','ETAGE 13');});
+  const c=card(`<div class="ln box" style="--c:var(--red)"><span class="pill">ACHTUNG</span><div class="big">DIESES HAUS HAT</div><div class="big"><span class="red">KEINE</span> 13. ETAGE</div></div>`,{top:'13%'});
+  await cap('Das Problem: Dieses Haus hat #keine 13. Etage.');
+  await out(c);S.glitch=false;
+  S.door=now();sfx('door',.7);bed('hum',0);bed('drone',.22);
+  await cap('Die Türen öffnen sich. Draußen: ein langer, dunkler *Flur.*');
+  S.figure=true;
+  await cap('Ganz am Ende steht jemand. Mit dem Rücken zu dir.');
+  S.scared=true;
+  await capAt('Du drückst auf „Tür zu“. #Nichts passiert.',4,()=>{sfx('tick',.6);setTimeout(()=>sfx('tick',.6),350);setTimeout(()=>sfx('tick',.6),700);});
+  await capAt('Dann knackt der Lautsprecher über dir.',2,()=>sfx('speaker',.6));
+  const q1=card(`<div class="ln box" style="--c:var(--gold)"><span class="pill gold">🔊 DURCHSAGE</span><div class="big">„BITTE STEIGEN SIE <span class="gold">AUS.</span>“</div></div>`,{top:'13%'});
+  await cap('„Bitte steigen Sie *aus.*“');
+  await out(q1);
+  await capAt('Die Gestalt im Flur… dreht langsam den #Kopf.',5,()=>{S.turn=now();sfx('hit',.8);});
+  S.flick=true;sfx('flicker',.5);
+  await capAt('Auf dem Display erscheint eine neue Zahl: ~14.',7,()=>{S.floor='14';S.glitch=true;sfx('ding',.5);sfx('hit',.4);clock('00:00','ETAGE 14');});
+  S.flick=false;S.dark=true;bed('heart',.55);
+  const q=question(),ab=choice('🚪 DU STEIGST AUS','🔔 DU DRÜCKST DEN NOTRUF');
+  dimT=.35;
+  await cap('Steigst du *aus?* Oder drückst du den #Notruf?',{big:1});
+  await sleep(2500);out(q);out(ab);dimT=.75;hud(false);
+  endCard('AUFLÖSUNG IN PART 2','KOMMENTIERE','<span class="hl">A</span> ODER <span class="red">B</span>');
+  await sleep(4500);bed('heart',0);finish();
+}
+boot('lobby');
+</script>
+</body>
+</html>
