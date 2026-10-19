@@ -371,6 +371,16 @@ async function cap(text,o={}){
   const words=text.split(/\s+/).filter(Boolean).map(w=>{const m={'*':'hl','#':'red','~':'gold'}[w[0]];return{w:m?w.slice(1).replace(/\*/g,''):w,c:m||''};});
   const chunks=[[]];for(const w of words){const c=chunks[chunks.length-1];c.push(w);if(c.length>=3||/[.,?!…:]$/.test(w.w))chunks.push([]);}
   capEl.style.top=o.top||'';capEl.className=o.big?'xl':'';
+  // Mit Sprachaufnahme (vom Renderer gesetzt): Wörter erscheinen, wenn sie gesprochen werden
+  const L=window.VOICE&&VOICE.lines[VOICE.i];
+  if(L){VOICE.i++;VOICE.log.push(performance.now());const t0=performance.now();let k=0;
+    for(const ch of chunks.filter(c=>c.length)){
+      await sleep(Math.max(0,t0+L.w[k]*1000-performance.now()));
+      capEl.innerHTML='';const k0=k;ch.forEach((w,i)=>{const s=document.createElement('span');s.className='w '+w.c;s.textContent=w.w;capEl.appendChild(s);setTimeout(()=>s.classList.add('in'),30+(L.w[k0+i]-L.w[k0])*1000);});
+      k+=ch.length;
+    }
+    await sleep(Math.max(0,t0+L.dur*1000-performance.now()));capEl.innerHTML='';return;
+  }
   for(const ch of chunks.filter(c=>c.length)){
     capEl.innerHTML='';ch.forEach((w,i)=>{const s=document.createElement('span');s.className='w '+w.c;s.textContent=w.w;capEl.appendChild(s);setTimeout(()=>s.classList.add('in'),30+i*110);});
     await sleep(Math.max(850,(260+ch.length*330)*(o.slow||1)));
