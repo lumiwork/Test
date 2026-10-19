@@ -405,8 +405,8 @@ const rule=(n,a,b)=>card(`<span class="ln pill">REGEL #${n}</span><div class="ln
 // ---------- Ablauf ----------
 async function story(){
   go('outside');hud(false);bed('rain',.32);bed('drone',.16);await sleep(300);
-  await cap('Wenn du jemals nachts an einer *Tankstelle* arbeitest…',{big:1});
-  await cap('lies zuerst den #Zettel unter der Kasse.',{big:1});
+  await cap('Stell dir vor… du arbeitest nachts allein an einer *Tankstelle.*',{big:1});
+  await cap('Und unter der Kasse klebt ein #Zettel, den du besser lesen solltest.',{big:1});
   hud(true);clock('02:51','TANKSTELLE B47');sfx('whoosh',.5);
   const t1=card(`<span class="ln pill">NACHTSCHICHT 1</span><div class="ln big" style="--d:.12s">TANKSTELLE <span class="gold">B47</span></div>`,{top:'14%'});
   await cap('Tankstelle B47. Deine erste *Nachtschicht.*');
@@ -415,7 +415,7 @@ async function story(){
 
   // Im Shop
   go('counter');S.time='02:51';sfx('whoosh',.4);bed('rain',.16);bed('hum',.2);clock('02:52','KASSE');await sleep(700);
-  await cap('Unter der Kasse klebt ein Zettel. Von deinem *Chef.*');
+  await cap('Der Zettel ist von deinem *Chef.*');
   go('note');S.rules=0;sfx('whoosh',.35);await sleep(500);
   S.rules=1;S.r0=now();let r=rule(1,'UM 3:00 KLOPFT JEMAND.','MACH <span class="red">NICHT</span> AUF.');
   await cap('Regel ~eins: Um drei Uhr klopft jemand an die Scheibe. #Mach #nicht #auf.');
