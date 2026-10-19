@@ -1,6 +1,6 @@
 // Rendert index.html?video als MP4 (1080x1920, TikTok-Format) Bild für Bild.
 // Die Zeit im Browser läuft simuliert, dadurch ruckelt nichts und das Timing ist exakt.
-// Aufruf: node render.cjs [ausgabe.mp4] [fps] [voice.json audio.mp3]
+// Aufruf: [SEITE=pfad/index.html] node render.cjs [ausgabe.mp4] [fps] [voice.json audio.mp3]
 // Mit voice.json + Audiodatei richten sich die Untertitel nach den gesprochenen Wörtern,
 // und jeder Satz wird genau dort ins Video gelegt, wo sein Untertitel erscheint.
 const fs=require('fs'),path=require('path'),{spawn}=require('child_process');
@@ -8,6 +8,7 @@ let pw;try{pw=require('playwright');}catch{pw=require('/opt/node22/lib/node_modu
 const OUT=path.resolve(process.argv[2]||'horror.mp4'),FPS=+(process.argv[3]||60),MAX_S=180;
 const VOICE=process.argv[4]?JSON.parse(fs.readFileSync(process.argv[4],'utf8')):null,AUDIO=process.argv[5]&&path.resolve(process.argv[5]);
 const PRE=.15,POST=.25; // Vorlauf/Nachlauf pro Satz in Sekunden
+const PAGE=process.env.SEITE?path.resolve(process.env.SEITE):path.join(__dirname,'index.html'); // andere Seite: SEITE=../mordfall/index.html
 
 // Ersetzt Uhr, Timer und requestAnimationFrame durch eine virtuelle Zeit
 const VIRTUAL_TIME=()=>{
@@ -39,7 +40,7 @@ const run=(args)=>new Promise((res,rej)=>{const p=spawn('ffmpeg',args,{stdio:['i
   await p.addInitScript(VIRTUAL_TIME);
   if(VOICE)await p.addInitScript(lines=>{window.VOICE={lines,i:0,log:[]};},VOICE.lines.map(l=>({w:l.w,dur:l.e-l.s+POST+.35})));
   p.on('pageerror',e=>console.error('Seitenfehler:',e.message));
-  await p.goto('file://'+path.join(__dirname,'index.html')+'?video');
+  await p.goto('file://'+PAGE+'?video');
   await p.evaluate(()=>document.fonts.ready);await p.waitForTimeout(500);
   const cdp=await p.context().newCDPSession(p);
   const VIDEO=AUDIO?OUT.replace(/\.mp4$/,'')+'.stumm.mp4':OUT;

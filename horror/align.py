@@ -1,10 +1,10 @@
 """Ordnet die Wort-Zeitstempel einer Transkription den Untertiteln aus index.html zu.
 
-Aufruf: python3 align.py transkript.json|aufnahme.mp3 voice.json [anzahl_saetze]
+Aufruf: [SEITE=pfad/index.html] python3 align.py transkript.json|aufnahme.mp3 voice.json [anzahl_saetze]
 transkript.json: Liste von Wörtern mit text/start/end (Sekunden) – z. B. aus ElevenLabs Scribe.
 Ergebnis voice.json: pro Untertitel-Zeile Start (s), Ende (e) und die Startzeit jedes Wortes relativ zu s (w).
 """
-import difflib, json, re, sys
+import difflib, json, os, re, sys
 from pathlib import Path
 
 ZAHLEN = {"vierzig": "40", "drei": "3"}
@@ -16,7 +16,7 @@ def norm(w):
 
 
 def captions(n):
-    html = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
+    html = Path(os.environ.get("SEITE", Path(__file__).parent / "index.html")).read_text(encoding="utf-8")
     lines = re.findall(r"\bcap\('([^']*)'", html)[:n]
     return [[re.sub(r"[*#~]", "", w) for w in l.split()] for l in lines]
 
