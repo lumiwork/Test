@@ -88,7 +88,7 @@ span.ln{display:inline-block}
 .stamp{font:700 .9em/1 Oswald,sans-serif;color:var(--red);border:.07em solid var(--red);border-radius:.12em;padding:.06em .3em;transform:rotate(-8deg);display:inline-block}
 
 /* Folg-Hinweis (followNudge) */
-.fnudge{position:absolute;left:50%;top:6%;transform:translate(-50%,-30%) scale(.6);opacity:0;display:flex;align-items:center;gap:.28em;font-size:.36em;padding:.3em .55em .3em .3em;border-radius:1.2em;background:rgba(10,12,22,.88);box-shadow:0 .15em .6em rgba(0,0,0,.45);z-index:30;animation:fnIn .45s cubic-bezier(.2,1.6,.4,1) forwards}
+.fnudge{position:absolute;left:50%;top:15%;transform:translate(-50%,-30%) scale(.6);opacity:0;display:flex;align-items:center;gap:.28em;font-size:.58em;padding:.3em .55em .3em .3em;border-radius:1.2em;background:rgba(10,12,22,.88);box-shadow:0 .15em .6em rgba(0,0,0,.45);z-index:30;animation:fnIn .45s cubic-bezier(.2,1.6,.4,1) forwards}
 .fnudge .av{position:relative;width:1.7em;height:1.7em;border-radius:50%;background:#39426a;border:.08em solid #fff;overflow:hidden;flex:none}
 .fnudge .av .hd{position:absolute;left:50%;top:22%;width:.6em;height:.6em;border-radius:50%;background:#c9d2ea;transform:translateX(-50%)}
 .fnudge .av .bd{position:absolute;left:50%;top:70%;width:1.15em;height:1em;border-radius:50%;background:#c9d2ea;transform:translateX(-50%)}
