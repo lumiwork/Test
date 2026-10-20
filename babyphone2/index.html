@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Das Babyphone – Part 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i>BABYSITTEN</div><div id="clock">23:16</div><div id="loc">SCHRANK</div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">DAS BABYPHONE · PART 2</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script>
+// Part 2 nach der Wahl der Community: B – du versteckst dich.
+// ---------- Wohnzimmer (wie Part 1) ----------
+function monitor(x,y,s,t,level){ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+  ctx.fillStyle='#e8ecf6';rr(ctx,-60,-150,120,170,26);ctx.fill();ctx.fillStyle='#c9cfe0';rr(ctx,-60,-10,120,30,12);ctx.fill();
+  ctx.fillStyle='#202744';rr(ctx,-40,-128,80,64,10);ctx.fill();
+  for(let i=0;i<5;i++){const on=i<level;ctx.fillStyle=on?(i<3?'#7fd99b':i<4?'#ffb21e':'#ff3b4a'):'#3a4266';rr(ctx,-32+i*14,-82-i*6,10,10+i*6,3);ctx.fill();}
+  ctx.fillStyle='#9aa3c2';for(let i=0;i<4;i++)for(let j=0;j<3;j++){ctx.beginPath();ctx.arc(-24+i*16,-40+j*14,3.5,0,7);ctx.fill();}
+  ctx.fillStyle=level>0?'#7fd99b':'#3a4266';ctx.beginPath();ctx.arc(38,-140,6,0,7);ctx.fill();if(level>0)glow(38,-140,40,'127,217,155',.6);
+  ctx.strokeStyle='#c9cfe0';ctx.lineWidth=8;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(40,-150);ctx.lineTo(55,-210);ctx.stroke();ctx.restore();}
+// fig: Gestalt auf der Treppe, 0 = unten, 1 = oben (null = keine)
+function living(t,o={}){
+  ctx.fillStyle='#2a2f52';ctx.fillRect(0,0,VW,VH);ctx.fillStyle=pat('wall',wallC);ctx.globalAlpha=.3;ctx.fillRect(0,0,VW,1150);ctx.globalAlpha=1;
+  ctx.fillStyle='#1d2240';ctx.fillRect(560,180,340,970);for(let i=0;i<12;i++){const y=1150-i*80,x=560+i*28;ctx.fillStyle=i%2?'#3a2c26':'#43332b';ctx.fillRect(x,y-80,900-x,80);ctx.fillStyle='#241a15';ctx.fillRect(x,y-80,900-x,8);}
+  ctx.fillStyle='#050710';ctx.fillRect(820,60,80,140);
+  if(o.fig!=null){const k=1+o.fig*10;creature(700+k*14,1150-k*80,.62,t,{rim:'rgba(255,60,80,.95)'});}
+  ctx.strokeStyle='#c9cfe0';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(560,1060);ctx.lineTo(900,110);ctx.stroke();for(let i=0;i<10;i++){const f=i/10;ctx.beginPath();ctx.moveTo(560+f*340,1060-f*950);ctx.lineTo(560+f*340,1150-f*950);ctx.stroke();}
+  ctx.fillStyle='#5b4a3f';ctx.fillRect(120,300,260,190);ctx.fillStyle='#8fa0c9';ctx.fillRect(135,315,230,160);ctx.fillStyle='#f3c6d6';ctx.beginPath();ctx.arc(250,395,40,0,7);ctx.fill();
+  ctx.fillStyle='#c9a24a';ctx.fillRect(40,820,10,300);ctx.fillStyle='#4a4030';ctx.beginPath();ctx.moveTo(0,820);ctx.lineTo(90,820);ctx.lineTo(70,740);ctx.lineTo(20,740);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#3a2c26';ctx.fillRect(0,1150,VW,450);ctx.fillStyle=pat('floor',floorC);ctx.globalAlpha=.35;ctx.fillRect(0,1150,VW,450);ctx.globalAlpha=1;
+  ctx.fillStyle='#46508a';rr(ctx,70,960,470,140,30);ctx.fill();
+  if(o.me)man({x:250,y:1150,s:1.05,t,front:1,scared:1,look:-4,label:DU});
+  ctx.fillStyle='#3a4479';rr(ctx,60,1050,490,130,30);ctx.fill();rr(ctx,40,980,60,200,26);ctx.fill();rr(ctx,510,980,60,200,26);ctx.fill();
+  ctx.fillStyle='#2b335a';ctx.fillRect(160,1180,330,22);
+  monitor(420,1050,.8,t,o.level||0);}
+// Blick aus dem Schrank: alles schwarz, nur durch die Lamellen sieht man ins Zimmer
+function slats(t){ctx.save();ctx.fillStyle='#030409';ctx.beginPath();ctx.rect(0,0,VW,VH);ctx.rect(330,150,440,1000);ctx.fill('evenodd');
+  for(let y=150;y<1150;y+=64){ctx.fillStyle='#0b0907';ctx.fillRect(330,y,440,26);ctx.fillStyle='#1a1410';ctx.fillRect(330,y+22,440,4);}
+  ctx.fillStyle='#0b0907';ctx.fillRect(330,150,22,1000);ctx.fillRect(748,150,22,1000);ctx.restore();}
+function bigMonitor(t,level){ctx.fillStyle='#14182c';ctx.fillRect(0,0,VW,VH);glow(450,800,700,'90,110,200',.18);
+  const sh=level>3?(Math.random()-.5)*6:0;ctx.save();ctx.translate(sh,0);monitor(450,1080,4.2,t,level);ctx.restore();
+  if(level>0){ctx.strokeStyle=`rgba(127,217,155,${.25+level*.1})`;ctx.lineWidth=5;for(let r=0;r<3;r++){const rr2=((t*.8+r/3)%1)*260+60;ctx.globalAlpha=1-((t*.8+r/3)%1);ctx.beginPath();ctx.arc(450,520,rr2,-2.3,-.8);ctx.stroke();}ctx.globalAlpha=1;}}
+// Handy im dunklen Schrank mit dem Chat von „Mama Sara“
+function bubble2(x,y,w,lines,mine){ctx.fillStyle=mine?'#2f6b45':'#2c3150';rr(ctx,x,y,w,26+lines.length*40,22);ctx.fill();ctx.fillStyle='#eef1ff';ctx.font='700 30px Montserrat, sans-serif';ctx.textAlign='left';ctx.textBaseline='top';lines.forEach((l,i)=>ctx.fillText(l,x+22,y+16+i*40));}
+function chat(t){ctx.fillStyle='#030409';ctx.fillRect(0,0,VW,VH);glow(450,640,520,'110,130,255',.22);
+  const e=ease(t/.5);ctx.save();ctx.translate(450,640+(1-e)*140);ctx.scale(.78,.78);ctx.rotate(-.03+(1-e)*.08);
+  ctx.fillStyle='#0b0d16';rr(ctx,-270,-560,540,1120,66);ctx.fill();ctx.strokeStyle='#2c3150';ctx.lineWidth=6;rr(ctx,-270,-560,540,1120,66);ctx.stroke();
+  ctx.fillStyle='#10142a';rr(ctx,-252,-542,504,1084,52);ctx.fill();ctx.fillStyle='#05060c';rr(ctx,-62,-524,124,34,17);ctx.fill();
+  ctx.fillStyle='#1b2140';ctx.fillRect(-252,-470,504,120);ctx.fillStyle='#39426a';ctx.beginPath();ctx.arc(-170,-410,40,0,7);ctx.fill();
+  ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle='#e8ecff';ctx.font='800 36px Montserrat, sans-serif';ctx.fillText('M',-183,-408);ctx.font='900 40px Montserrat, sans-serif';ctx.fillText('MAMA SARA',-110,-420);
+  ctx.fillStyle='#7fd99b';ctx.font='700 24px Montserrat, sans-serif';ctx.fillText('online',-110,-382);
+  ctx.textAlign='center';ctx.fillStyle='#9aa6c8';ctx.font='700 26px Montserrat, sans-serif';ctx.fillText('📞 Anruf · 23:15 · 0:41',0,-290);
+  if(S.m1!=null&&t>S.m1)bubble2(-230,-220,440,['Sorry!! Mein Akku war','seit 22 Uhr leer 😩'],false);
+  if(S.m2!=null&&t>S.m2)bubble2(-230,-80,360,['Alles okay bei euch?'],false);
+  if(S.mark!=null&&t>S.mark){const p=ease((t-S.mark)/.4);ctx.strokeStyle=`rgba(255,59,74,${p})`;ctx.lineWidth=8;rr(ctx,-210,-318,420,56,28);ctx.stroke();}
+  ctx.restore();}
+const scenes={
+  hide:{draw(t){
+    // Gestalt auf der Treppe: bei „Schritte…“ bis zur Mitte, bei „hoch“ ganz nach oben, dann weg
+    let fig=null;if(S.figT!=null&&!S.gone){fig=S.up==null?Math.min(.45,(t-S.figT)*.12):.45+(t-S.up)*.3;if(fig>=1)fig=null;}
+    if(!S.hidden){living(t,{me:1,level:S.level||0});darkness(.45,[{x:420,y:1000,r:300,a:.6},{x:640,y:600,r:420,a:.35}]);return;}
+    // im Schrank: Zimmer nach links verschoben, damit die Treppe mitten im Spalt liegt
+    ctx.save();ctx.translate(-190,0);living(t,{level:S.level||0,fig});ctx.restore();
+    darkness(.3,[{x:560,y:650,r:520,a:.5},{x:230,y:1000,r:260,a:.6}]);slats(t);}},
+  chat:{draw(t){chat(t);}},
+  monitor:{draw(t){bigMonitor(t,S.level||0);darkness(.2,[{x:450,y:700,r:700,a:.5}]);
+    if(S.win!=null){ctx.strokeStyle=`rgba(200,215,255,${.25*ease(Math.min(1,(t-S.win)/.6))})`;ctx.lineWidth=3;for(let i=0;i<14;i++){const y=(i*97+t*260)%VH,x=((i*211)%VW);ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+80,y+20,x+160,y-10);ctx.stroke();}}}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('hide');S.level=2;hud(false);bed('drone',.14);await sleep(300);
+  const ti=card(`<span class="ln pill">PART 2</span><div class="ln title" style="--d:.12s">WAHL <span class="red">B</span></div>`,{top:'12%'});
+  await cap('Ihr habt gewählt: *B.* Du #versteckst dich.',{big:1});
+  await out(ti);hud(true);clock('23:16','SCHRANK');
+  await capAt('Schnell. Rein in den #Schrank. Tür zu.',2,()=>{S.hidden=true;sfx('door',.6);});
+  await cap('Durch die Lamellen siehst du die *Treppe.*');
+  bed('heart',.4);
+  await capWords('Schritte. Langsam. Stufe für Stufe.',i=>{if(i===0){S.figT=now();}if(i%2===0)sfx('creak',.6);});
+  await capAt('Aber sie kommen nicht runter. Sie gehen #hoch.',5,()=>{S.up=now();sfx('creak',.8);});
+  await capAt('Dann: *Stille.*',0,()=>{S.gone=true;});
+  go('chat');clock('23:21','NACHRICHT');bed('heart',.3);sfx('buzz',.7);
+  await cap('Dein Handy vibriert. Eine Nachricht von *Mama* Sara.');
+  S.m1=.2;sfx('ding',.5);
+  await cap('„Sorry! Mein Akku war seit 22 Uhr #leer.“');
+  S.m2=now();sfx('ding',.5);
+  await capAt('Moment. Mit wem hast du dann #telefoniert?',4,()=>{S.mark=now();sfx('hit',.7);});
+  await cap('Wer hat gesagt: Geh #nicht hoch?');
+  go('monitor');S.level=3;clock('23:22','BABYPHONE');bed('drone',.24);sfx('static',.3);
+  await capAt('Im Babyphone: Ein Fenster geht #auf.',4,()=>{S.win=now();sfx('creak',.7);bed('wind',.3);});
+  await capWords('Das Schlaflied wird leiser. Und #leiser.',i=>{S.level=Math.max(1,3-Math.floor(i/2));if(i===0)sfx('whisper',.6);if(i===4)sfx('whisper',.3);});
+  go('hide');S.hidden=true;S.level=0;clock('23:22','SCHRANK');bed('wind',.12);bed('heart',.55);
+  await capAt('Es wollte nie zu dir. Es wollte nur, dass du #unten bleibst.',9,()=>sfx('hit',.8),{big:1});
+  dimT=.35;const q=question(),ab=choice('🏃 DU RENNST HOCH','🌙 DU RENNST RAUS UNTERS FENSTER');
+  await cap('Rennst du *hoch* ins Kinderzimmer? Oder #raus unters Fenster?',{big:1});
+  await sleep(2000);out(q);out(ab);dimT=.75;hud(false);
+  outro('AUFLÖSUNG IN PART 3','PART <span class="hl">3</span>','KOMMENTIERE <span class="hl">A</span> ODER <span class="red">B</span> 👇');
+  await sleep(4500);bed('heart',0);bed('drone',0);bed('wind',0);finish();
+}
+boot('hide');
+</script>
+</body>
+</html>
