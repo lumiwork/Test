@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Die Sprachnachricht – Teil 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;500;700&family=Montserrat:wght@600;700;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i></div><div id="clock"></div><div id="loc"></div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">DIE SPRACHNACHRICHT · TEIL 1</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script src="../engine/monster.js"></script>
+<script>
+// Serie „Die Sprachnachricht“, Teil 1. Aufbau nach der Hook-Recherche:
+// erstes Bild = echt wirkender Sperrbildschirm, Satz 1 = Uhrzeit + Unmögliches, alle 2–3 s ein Schnitt/Zoom, Frage vor Sekunde 30.
+VIG=.5;
+const TEAL='#3ee8b5',UIBG='#0c0f14',BUB='#14463d',UIGR='#8b96a8';
+const lerp=(a,b,p)=>a+(b-a)*p,clamp=x=>Math.max(0,Math.min(1,x));
+// ---------- Sperrbildschirm ----------
+function lockScreen(t){const g=ctx.createLinearGradient(0,0,0,VH);g.addColorStop(0,'#1a2440');g.addColorStop(1,'#07090f');ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);
+  glow(450,380,420,'62,232,181',.08);ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillStyle='#e8ecf6';ctx.font='300 230px Oswald, sans-serif';ctx.fillText('3:12',450,400);
+  ctx.font='600 34px Montserrat, sans-serif';ctx.fillStyle='rgba(232,236,246,.7)';ctx.fillText('🔒',450,140);
+  const p=clamp((t-.05)/.35),y=lerp(470,560,1-(1-p)**3);ctx.globalAlpha=p;
+  ctx.fillStyle='rgba(40,46,60,.92)';rr(ctx,40,y,820,170,34);ctx.fill();ctx.fillStyle=TEAL;rr(ctx,70,y+36,96,96,24);ctx.fill();
+  ctx.fillStyle='#07080f';rr(ctx,104,y+56,28,44,14);ctx.fill();ctx.fillRect(116,y+100,4,18);ctx.fillRect(104,y+116,28,4);
+  ctx.textAlign='left';ctx.fillStyle='#fff';ctx.font='800 40px Montserrat, sans-serif';ctx.fillText('Ich',196,y+76);ctx.font='600 36px Montserrat, sans-serif';ctx.fillStyle='#d6dbe6';ctx.fillText('🎤 Sprachnachricht (0:13)',196,y+130);
+  ctx.textAlign='right';ctx.font='600 28px Montserrat, sans-serif';ctx.fillStyle=UIGR;ctx.fillText('jetzt',830,y+70);ctx.globalAlpha=1;}
+// ---------- Chat mit dir selbst ----------
+function uiBg(){ctx.fillStyle=UIBG;ctx.fillRect(0,0,VW,VH);ctx.fillStyle='rgba(255,255,255,.025)';for(let y=200;y<1460;y+=70)for(let x=(y/70%2)*35;x<VW;x+=70){ctx.beginPath();ctx.arc(x,y,4,0,7);ctx.fill();}}
+function uiTop(status,stCol){ctx.fillStyle='#12161d';ctx.fillRect(0,0,VW,186);ctx.fillStyle='#e8ecf6';ctx.font='800 30px Montserrat, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText('3:14',40,34);
+  ctx.textAlign='right';ctx.fillText('▮▮▮  19%',860,34);ctx.textAlign='left';ctx.font='900 54px Montserrat, sans-serif';ctx.fillText('‹',26,118);
+  ctx.fillStyle='#39426a';ctx.beginPath();ctx.arc(116,118,40,0,7);ctx.fill();ctx.fillStyle='#c9d2ea';ctx.beginPath();ctx.arc(116,106,15,0,7);ctx.fill();ctx.beginPath();ctx.arc(116,146,26,Math.PI,0);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='800 40px Montserrat, sans-serif';ctx.fillText('Ich (Du)',178,100);ctx.fillStyle=stCol;ctx.font='700 28px Montserrat, sans-serif';ctx.fillText(status,178,146);}
+function uiInput(rec,t){ctx.fillStyle='#12161d';ctx.fillRect(0,1450,VW,150);ctx.fillStyle='#1f2630';rr(ctx,24,1478,730,92,46);ctx.fill();ctx.fillStyle=UIGR;ctx.font='600 34px Montserrat, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText(rec?'● 0:0'+Math.floor(t%10)+'  Aufnahme…':'Nachricht',70,1524);if(rec){ctx.fillStyle='#ff3b4a';ctx.beginPath();ctx.arc(70,1524,10,0,7);ctx.fill();}
+  ctx.fillStyle=TEAL;ctx.beginPath();ctx.arc(824,1524,48,0,7);ctx.fill();ctx.fillStyle='#07080f';rr(ctx,812,1498,24,38,12);ctx.fill();ctx.fillRect(822,1536,4,12);}
+function textBub(y,txt,time){ctx.font='600 34px Montserrat, sans-serif';const w=ctx.measureText(txt).width+150;ctx.fillStyle=BUB;rr(ctx,860-w,y,w,84,22);ctx.fill();
+  ctx.fillStyle='#e8f5f0';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(txt,860-w+26,y+42);ctx.fillStyle='#9fd8c6';ctx.font='600 22px Montserrat, sans-serif';ctx.textAlign='right';ctx.fillText(time+' ✓✓',846,y+62);}
+const WAVE=[...Array(30)].map((_,i)=>.25+.75*Math.abs(Math.sin(i*1.7)*Math.cos(i*.6)));
+function voiceBub(y,o,t){const x=300,w=560,h=124;ctx.fillStyle=o.dark?'#0e2a25':BUB;rr(ctx,x,y,w,h,24);ctx.fill();if(o.glow){ctx.save();ctx.shadowColor=TEAL;ctx.shadowBlur=30*o.glow;ctx.strokeStyle=`rgba(62,232,181,${o.glow})`;ctx.lineWidth=4;rr(ctx,x,y,w,h,24);ctx.stroke();ctx.restore();}
+  ctx.fillStyle='#39426a';ctx.beginPath();ctx.arc(x+60,y+62,36,0,7);ctx.fill();ctx.fillStyle='#c9d2ea';ctx.beginPath();ctx.arc(x+60,y+52,13,0,7);ctx.fill();ctx.beginPath();ctx.arc(x+60,y+86,22,Math.PI,0);ctx.fill();
+  ctx.fillStyle='#e8f5f0';if(o.play){ctx.fillRect(x+118,y+42,10,36);ctx.fillRect(x+136,y+42,10,36);}else{ctx.beginPath();ctx.moveTo(x+118,y+40);ctx.lineTo(x+150,y+60);ctx.lineTo(x+118,y+80);ctx.closePath();ctx.fill();}
+  WAVE.forEach((v,i)=>{const live=o.play?Math.abs(Math.sin(t*12+i*.9))*.5+.5:1,hh=8+v*46*live,bx=x+176+i*11;ctx.fillStyle=i/WAVE.length<o.prog?TEAL:'rgba(232,245,240,.45)';rr(ctx,bx,y+56-hh/2,6,hh,3);ctx.fill();});
+  if(o.teeth>0){ctx.fillStyle=`rgba(255,255,255,${o.teeth})`;for(let i=0;i<14;i++){const bx=x+178+i*23;ctx.beginPath();ctx.moveTo(bx,y+20);ctx.lineTo(bx+10,y+20+16*o.teeth);ctx.lineTo(bx+20,y+20);ctx.fill();ctx.beginPath();ctx.moveTo(bx,y+92);ctx.lineTo(bx+10,y+92-16*o.teeth);ctx.lineTo(bx+20,y+92);ctx.fill();}}
+  ctx.fillStyle='#9fd8c6';ctx.font='600 22px Montserrat, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(o.len,x+176,y+104);ctx.textAlign='right';ctx.fillText(o.time+' ✓✓',x+w-16,y+104);}
+// Kamera: weicher Zoom auf einen Punkt (Schnitt-Ersatz alle paar Sekunden)
+// (fx,fy) = Punkt im Bild, der beim Zoomen in die Bildmitte (waagerecht) wandert
+function zoomTo(z,fy,fx=450){const c=curZoom(now()),f=curFx(now());S.xA=f;S.xB=fx;S.zA=c;S.zB=z;S.zT=now();S.fy=fy;}
+function curFx(t){if(S.zT==null)return 450;return lerp(S.xA,S.xB,ease(clamp((t-S.zT)/.45)));}
+function curZoom(t){if(S.zT==null)return 1;return lerp(S.zA,S.zB,ease(clamp((t-S.zT)/.45)));}
+function glitch(t,t0,d=.45){if(t0==null||t<t0||t>t0+d)return;for(let i=0;i<9;i++){const y=(i*173+Math.floor(t*40)*97)%VH,h=8+(i*13)%40;ctx.fillStyle=i%2?'rgba(62,232,181,.35)':'rgba(255,59,74,.3)';ctx.fillRect(((i*61+Math.floor(t*60)*37)%120)-60,y,VW,h);}}
+
+const scenes={
+  lock:{draw(t){lockScreen(t);}},
+  chat:{draw(t){
+    const z=curZoom(t),sh=S.shake!=null&&t-S.shake<.6?(Math.random()-.5)*14*(1-(t-S.shake)/.6):0;
+    ctx.save();ctx.translate(450+sh,S.fy||800);ctx.scale(z,z);ctx.translate(-curFx(t),-(S.fy||800));
+    uiBg();ctx.fillStyle='#1f2630';rr(ctx,370,214,160,46,23);ctx.fill();ctx.fillStyle=UIGR;ctx.font='700 24px Montserrat, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('HEUTE',450,238);
+    textBub(290,'Milch, Eier, Brot 🛒','18:04');textBub(394,'Zahnarzt Do 9:30!!','21:37');
+    const p1=S.play1!=null?clamp((t-S.play1)/S.len1):0;
+    voiceBub(500,{len:'0:13',time:'03:12',prog:p1,play:S.play1!=null&&p1<1&&S.stop1==null,glow:S.hl1!=null?.5+.5*Math.sin(t*6):0},t);
+    if(S.v2!=null){const a=popAtSafe(t,S.v2);ctx.save();ctx.translate(580,722);ctx.scale(a,a);ctx.translate(-580,-722);
+      const p2=S.play2!=null?clamp((t-S.play2)/1.2):0;voiceBub(660,{len:'0:02',time:'03:14',prog:p2,play:S.play2!=null&&p2<1,teeth:S.play2!=null?clamp((t-S.play2)/.8):0,glow:1,dark:1},t);ctx.restore();}
+    uiTop(S.rec?'nimmt Sprachnachricht auf…':'online',S.rec?TEAL:UIGR);if(S.rec&&Math.sin(t*8)>0){ctx.fillStyle=TEAL;ctx.beginPath();ctx.arc(640,146,8,0,7);ctx.fill();}
+    uiInput(false,t);ctx.restore();
+    if(S.rev!=null){const r=t-S.rev;ctx.fillStyle=`rgba(3,4,8,${Math.min(.88,r*1.6)})`;ctx.fillRect(0,0,VW,VH);
+      const s=lerp(.5,1.55,ease(clamp(r/.7)));ctx.save();ctx.translate(450,lerp(760,1040,ease(clamp(r/.7))));ctx.scale(s,s);MONSTER.sprachnachricht(t);ctx.restore();
+      glow(450,520,520,'62,232,181',.12*clamp(r));}
+    glitch(t,S.gl);glitch(t,S.rev,.6);}},
+};
+function popAtSafe(t,t0){const x=clamp((t-t0)/.35),c=1.7;return 1+(c+1)*(x-1)**3+c*(x-1)**2;}
+
+// ---------- Ablauf ----------
+async function story(){
+  go('lock');hud(false);sfx('ding',.8);sfx('hit',.35);bed('drone',.12);
+  const k=card(`<span class="ln pill">DIE SPRACHNACHRICHT · TEIL 1</span><div class="ln title" style="--d:.08s">VON <span class="red">DIR</span>. IM <span class="hl">SCHLAF</span>.</div>`,{top:'50%'});
+  await capAt('Um 3 Uhr 12 hast du dir selbst eine *Sprachnachricht* geschickt.',7,()=>sfx('ding',.4));
+  out(k);go('chat');S.hl1=0;zoomTo(1.45,560,580);sfx('whoosh',.35);
+  await capAt('Aber du hast #geschlafen.',3,()=>{S.gl=now();sfx('static',.35);});
+  zoomTo(1.25,560,580);S.play1=now();S.len1=6.5;sfx('click',.6);S.hl1=null;
+  await cap('„Hey. Ich bin es. Du.“');
+  zoomTo(1.5,560,580);
+  await capAt('Es ist *deine* Stimme.',2,()=>sfx('hit',.35));
+  zoomTo(1.15,600,560);bed('heart',.35);
+  await cap('„Egal was passiert: Antworte nicht mit deiner #Stimme.“');
+  S.stop1=now();zoomTo(1.5,120,380);
+  await capAt('Dann steht oben im Chat: *nimmt* *Sprachnachricht* *auf…*',4,()=>{S.rec=true;sfx('click',.5);sfx('hit',.4);});
+  zoomTo(1,800);
+  await capAt('Aber du hältst das Handy. Und du nimmst #nichts auf.',8,()=>{S.gl=now();sfx('static',.4);});
+  S.rec=false;S.v2=now();sfx('ding',.6);zoomTo(1.35,720,580);bed('heart',.55);
+  await capAt('„Dreh dich nicht #um.“',0,()=>{S.play2=now();sfx('click',.5);});
+  await capAt('Hinter dir knarrt der #Boden.',3,()=>{S.rev=now();S.shake=now();sfx('creak',.9);sfx('hit',.7);});
+  dimT=.25;const q=question('6%'),ab=choice('🎤 DU ANTWORTEST','🔄 DU DREHST DICH UM','20%');
+  await cap('Antwortest du per *Sprachnachricht?* Oder drehst du dich #um?',{big:1});
+  await sleep(1800);out(q);out(ab);dimT=.75;
+  outro('TEIL 2 ENTSCHEIDET IHR','TEIL <span class="hl">2</span>','KOMMENTIERE <span class="hl">A</span> ODER <span class="red">B</span> 👇');
+  await sleep(4200);bed('heart',0);bed('drone',0);finish();
+}
+boot('lock');
+</script>
+</body>
+</html>

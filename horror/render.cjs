@@ -8,6 +8,8 @@ let pw;try{pw=require('playwright');}catch{pw=require('/opt/node22/lib/node_modu
 const OUT=path.resolve(process.argv[2]||'horror.mp4'),FPS=+(process.argv[3]||60),MAX_S=180;
 const VOICE=process.argv[4]?JSON.parse(fs.readFileSync(process.argv[4],'utf8')):null,AUDIO=process.argv[5]&&path.resolve(process.argv[5]);
 const PRE=.15,POST=.25; // Vorlauf/Nachlauf pro Satz in Sekunden
+// Sätze mit "fx":"telefon" in voice.json klingen wie eine Sprachnachricht aus dem Handy-Lautsprecher
+const TELEFON='highpass=f=320,lowpass=f=3200,acrusher=bits=10:mix=0.25,volume=1.5,';
 const SOUNDS=process.env.SOUNDS&&path.resolve(process.env.SOUNDS); // Ordner mit <name>.wav für sfx()/bed() der Seite
 const PAGE=process.env.SEITE?path.resolve(process.env.SEITE):path.join(__dirname,'index.html'); // andere Seite: SEITE=../mordfall/index.html
 
@@ -69,7 +71,7 @@ const run=(args)=>new Promise((res,rej)=>{const p=spawn('ffmpeg',args,{stdio:['i
     if(log.length!==VOICE.lines.length)throw new Error(`Untertitel ${log.length} ≠ Sätze ${VOICE.lines.length}`);
     inputs.push('-i',AUDIO);const vi=k++;
     VOICE.lines.forEach((l,i)=>{const s=Math.max(l.s-PRE,i?VOICE.lines[i-1].e+.02:0),e=l.e+POST,d=Math.round((log[i]/1000-(l.s-s))*1000);
-      chains.push(`[${vi}:a]atrim=start=${s.toFixed(3)}:end=${e.toFixed(3)},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=mono,afade=t=in:d=0.03,afade=t=out:st=${(e-s-.06).toFixed(3)}:d=0.06,adelay=${d}:all=1[a${i}]`);});
+      chains.push(`[${vi}:a]atrim=start=${s.toFixed(3)}:end=${e.toFixed(3)},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=mono,afade=t=in:d=0.03,afade=t=out:st=${(e-s-.06).toFixed(3)}:d=0.06,${l.fx==='telefon'?TELEFON:''}adelay=${d}:all=1[a${i}]`);});
     chains.push(`${VOICE.lines.map((_,i)=>`[a${i}]`).join('')}amix=inputs=${VOICE.lines.length}:normalize=0,loudnorm=I=-16:TP=-2:LRA=11[vo]`);voiceOut='vo';
   }
   // Soundeffekte: einzelne Sounds (sfx) und Schleifen (bed, Lautstärke 0 = aus) an ihre Zeitpunkte legen
