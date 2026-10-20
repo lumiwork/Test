@@ -100,7 +100,7 @@ async function story(){
   S.rec=false;S.v2=now();sfx('ding',.6);zoomTo(1.35,720,580);bed('heart',.55);
   await capAt('„Dreh dich nicht #um.“',0,()=>{S.play2=now();sfx('click',.5);});
   await capAt('Hinter dir knarrt der #Boden.',3,()=>{S.rev=now();S.shake=now();sfx('creak',.9);sfx('hit',.7);});
-  dimT=.25;const q=question('6%'),ab=choice('🎤 DU ANTWORTEST','🔄 DU DREHST DICH UM','20%');
+  dimT=.25;const q=question('6%'),ab=choice('🎤 DU ANTWORTEST','🔄 DU DREHST DICH UM','26%');
   await cap('Antwortest du per *Sprachnachricht?* Oder drehst du dich #um?',{big:1});
   await sleep(1800);out(q);out(ab);dimT=.75;
   outro('TEIL 2 ENTSCHEIDET IHR','TEIL <span class="hl">2</span>','KOMMENTIERE <span class="hl">A</span> ODER <span class="red">B</span> 👇');

@@ -9,7 +9,7 @@ const OUT=path.resolve(process.argv[2]||'horror.mp4'),FPS=+(process.argv[3]||60)
 const VOICE=process.argv[4]?JSON.parse(fs.readFileSync(process.argv[4],'utf8')):null,AUDIO=process.argv[5]&&path.resolve(process.argv[5]);
 const PRE=.15,POST=.25; // Vorlauf/Nachlauf pro Satz in Sekunden
 // Sätze mit "fx":"telefon" in voice.json klingen wie eine Sprachnachricht aus dem Handy-Lautsprecher
-const TELEFON='highpass=f=320,lowpass=f=3200,acrusher=bits=10:mix=0.25,volume=1.5,';
+const TELEFON='highpass=f=320,lowpass=f=3200,acrusher=bits=10:mix=0.25,volume=2.8,';
 const SOUNDS=process.env.SOUNDS&&path.resolve(process.env.SOUNDS); // Ordner mit <name>.wav für sfx()/bed() der Seite
 const PAGE=process.env.SEITE?path.resolve(process.env.SEITE):path.join(__dirname,'index.html'); // andere Seite: SEITE=../mordfall/index.html
 
