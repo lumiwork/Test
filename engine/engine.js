@@ -223,6 +223,11 @@ function question(top='11%'){return card(`<span class="ln pill">DEINE WAHL</span
 function endCard(pill,mid,big){return card(`<span class="ln pill lime">${pill}</span><div class="ln big" style="--d:.15s;font-size:.8em">${mid}</div>
   <div class="ln mega" style="--d:.3s">${big}</div><div class="ln" style="--d:.5s"><span class="follow">❤ FOLGEN</span></div>`,{top:'22%'});}
 // Abspann: „Folgen für …“ groß, darunter die Aufforderung zum Kommentieren
+// Folg-Hinweis mitten im Video: TikTok-artiger Folgen-Knopf, ein Finger tippt drauf, dann Häkchen (Standard für neue Videos)
+function followNudge(text='FOLG FÜR MEHR',ms=2800){const d=document.createElement('div');d.className='fnudge';
+  d.innerHTML=`<div class="av"><span class="hd"></span><span class="bd"></span><b class="plus">+</b></div><div class="tx">${text}</div><div class="fg">👆</div>`;
+  stage.appendChild(d);sfx('pop',.6);setTimeout(()=>{d.classList.add('tap');d.querySelector('.plus').textContent='✓';sfx('tap',.9);setTimeout(()=>sfx('ding',.4),120);},950);
+  setTimeout(()=>d.classList.add('out'),ms);setTimeout(()=>d.remove(),ms+450);return d;}
 function outro(pill,big,ask){return card(`<span class="ln pill lime">${pill}</span><div class="ln big" style="--d:.12s;font-size:.8em">FOLGEN FÜR</div>
   <div class="ln mega" style="--d:.25s">${big}</div><div class="ln" style="--d:.4s"><span class="follow">❤ FOLGEN</span></div>
   ${ask?`<div class="ln box" style="--c:var(--gold);--d:.55s"><div class="mid">${ask}</div></div>`:''}`,{top:'15%'});}

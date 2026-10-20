@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GTA 6 für Dummies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@600;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i></div><div id="clock"></div><div id="loc"></div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">GTA 6 · FÜR DUMMIES</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script src="../engine/papier.js"></script>
+<script>
+// Stand 21.10.2026: Release 19.11.2026 (PS5, Xbox Series X|S), Vorladen ab 12.11., kein PC angekündigt,
+// Standard-Edition USA 79,99 $, 676,7-GB-Gerücht von Rockstar dementiert, zweimal verschoben (2025 → Mai 2026 → Nov 2026).
+// ---------- Bausteine ----------
+const PINK='#ff4fa3',CYAN='#29d3ff',ORANGE='#ff8a3d';
+function stamp(txt,col=RED,size=70){ctx.rotate(-.16);ctx.font=`900 ${size}px Montserrat, sans-serif`;const w=ctx.measureText(txt).width+50;stroke(10,col);rr(ctx,-w/2,-size*.75,w,size*1.5,14);ctx.stroke();bold(txt,0,4,size,col);}
+function logo(){ctx.save();ctx.rotate(-.05);ctx.font='900 170px Montserrat, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=16;ctx.strokeStyle=INK;ctx.strokeText('GTA',0,-40);
+  const g=ctx.createLinearGradient(-200,0,200,0);g.addColorStop(0,PINK);g.addColorStop(1,CYAN);ctx.fillStyle=g;ctx.fillText('GTA',0,-40);ctx.font='900 230px Montserrat, sans-serif';ctx.strokeText('6',0,150);ctx.fillStyle=YEL;ctx.fillText('6',0,150);ctx.restore();}
+function calendar(top,big,col=RED){ctx.fillStyle='#fffdf5';rr(ctx,-150,-150,300,300,16);ctx.fill();stroke(8);rr(ctx,-150,-150,300,300,16);ctx.stroke();ctx.fillStyle=col;rr(ctx,-150,-150,300,80,16);ctx.fill();ctx.fillRect(-150,-100,300,30);bold(top,0,-110,40,'#fff');bold(big,0,40,big.length>3?80:130,INK);}
+function palm(s=1){ctx.save();ctx.scale(s,s);stroke(12,'#8a6a4a');ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(14,-80,4,-160);ctx.stroke();ctx.fillStyle='#2f9e5a';for(let i=0;i<5;i++){ctx.save();ctx.translate(4,-160);ctx.rotate(-1.4+i*.7);ctx.beginPath();ctx.ellipse(40,0,46,13,0,0,7);ctx.fill();ctx.restore();}ctx.restore();}
+function peninsula(){ctx.fillStyle='#7fd99b';ctx.beginPath();ctx.moveTo(-260,-220);ctx.lineTo(160,-220);ctx.lineTo(170,-120);ctx.quadraticCurveTo(140,40,100,140);ctx.quadraticCurveTo(60,240,20,250);ctx.quadraticCurveTo(-10,200,-30,120);ctx.quadraticCurveTo(-90,0,-200,-60);ctx.lineTo(-260,-120);ctx.closePath();ctx.fill();stroke(8);ctx.stroke();}
+function pin(col=PINK){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(-30,-40,-40,-70,-40,-90);ctx.arc(0,-90,40,Math.PI,0);ctx.bezierCurveTo(40,-70,30,-40,0,0);ctx.fill();stroke(6);ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,-90,15,0,7);ctx.fill();}
+function retroTV(t){ctx.fillStyle='#8a6a4a';rr(ctx,-200,-150,400,300,24);ctx.fill();stroke(8);rr(ctx,-200,-150,400,300,24);ctx.stroke();ctx.fillStyle='#2b2926';rr(ctx,-170,-120,280,240,30);ctx.fill();
+  const g=ctx.createLinearGradient(0,-120,0,120);g.addColorStop(0,PINK);g.addColorStop(1,'#5a2a8a');ctx.fillStyle=g;rr(ctx,-160,-110,260,220,26);ctx.fill();ctx.fillStyle=YEL;ctx.beginPath();ctx.arc(-30,10,50,Math.PI,0);ctx.fill();
+  for(let i=0;i<5;i++){ctx.fillStyle='rgba(43,41,38,.6)';ctx.fillRect(-160,20+i*16,260,6);}for(const y of[-60,10]){ctx.fillStyle='#4a4540';ctx.beginPath();ctx.arc(150,y,18,0,7);ctx.fill();}}
+function figure(x,col,label,t,glasses){const m=stick(x,980,1.15,t,{seed:x});ctx.fillStyle=col;rr(ctx,m.head[0]-60,m.head[1]+60,120,150,20);ctx.fill();if(glasses){ctx.fillStyle=INK;rr(ctx,m.head[0]-34,m.head[1]-12,30,16,6);ctx.fill();rr(ctx,m.head[0]+4,m.head[1]-12,30,16,6);ctx.fill();}
+  at(x,1060,1,x,()=>{ctx.rotate(-.03);marker(-110,-34,220,68);hand(label,0,0,58);});}
+function consoleBox(label,col){ctx.fillStyle=col;rr(ctx,-130,-170,260,340,18);ctx.fill();stroke(8);rr(ctx,-130,-170,260,340,18);ctx.stroke();ctx.fillStyle='#fffdf5';rr(ctx,-105,-140,210,90,10);ctx.fill();stroke(5);rr(ctx,-105,-140,210,90,10);ctx.stroke();bold(label,0,-95,label.length>4?34:48,INK);
+  ctx.save();ctx.translate(0,50);ctx.scale(.9,.9);logoMini();ctx.restore();}
+function logoMini(){ctx.font='900 70px Montserrat, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=8;ctx.strokeStyle=INK;ctx.strokeText('GTA 6',0,0);ctx.fillStyle=YEL;ctx.fillText('GTA 6',0,0);}
+function monitor(){ctx.fillStyle='#2b2926';rr(ctx,-200,-150,400,260,14);ctx.fill();stroke(8);rr(ctx,-200,-150,400,260,14);ctx.stroke();ctx.fillStyle='#bfe3ff';rr(ctx,-180,-130,360,220,8);ctx.fill();ctx.fillStyle='#8f8a80';ctx.fillRect(-30,110,60,60);ctx.fillRect(-100,165,200,20);bold('?',0,-20,160,RED);}
+function bar(p,label){ctx.fillStyle='#fff';rr(ctx,-300,-34,600,68,34);ctx.fill();ctx.fillStyle=GREEN;rr(ctx,-300,-34,Math.max(68,600*p),68,34);ctx.fill();stroke(7);rr(ctx,-300,-34,600,68,34);ctx.stroke();bold(label,0,3,32,INK);}
+function priceTag(txt){ctx.rotate(-.1);ctx.fillStyle='#fffdf5';ctx.beginPath();ctx.moveTo(-200,-70);ctx.lineTo(150,-70);ctx.lineTo(220,0);ctx.lineTo(150,70);ctx.lineTo(-200,70);ctx.closePath();ctx.fill();stroke(8);ctx.stroke();ctx.beginPath();ctx.arc(160,0,14,0,7);ctx.stroke();bold(txt,-20,4,70,RED);}
+function hdd(){ctx.fillStyle='#bcb5a4';rr(ctx,-170,-120,340,240,18);ctx.fill();stroke(8);rr(ctx,-170,-120,340,240,18);ctx.stroke();ctx.fillStyle='#8f8a80';ctx.beginPath();ctx.arc(-30,0,80,0,7);ctx.fill();ctx.stroke();bold('677 GB',60,-80,40,INK);}
+
+const scenes={
+  hook:{draw(t){paper(t);at(450,420,popAt(t,0,.3),1,()=>{ctx.rotate(Math.sin(t*2)*.03);logo();});
+    at(450,830,popAt(t,.15,.3),2,()=>{ctx.scale(.9,.9);calendar('NOVEMBER','19');});
+    if(S.dum!=null)at(700,620,popAt(t,S.dum,.3),3,()=>{ctx.rotate(.12);marker(-150,-38,300,76);hand('für Dummies',0,0,60,RED);});}},
+  map:{draw(t){paper(t);at(450,560,popAt(t,.05,.5),1,()=>peninsula());hand('Leonida',380,420,90);
+    for(const[x,y,s]of[[250,640,.6],[620,760,.5],[520,880,.45]])at(x,y,popAt(t,.3+x/2000),x,()=>palm(s));
+    if(S.fl!=null)at(450,180,popAt(t,S.fl),5,()=>{ctx.rotate(-.04);marker(-230,-38,460,76);hand('≈ Florida',0,0,66);});
+    if(S.vc!=null){at(560,720,popAt(t,S.vc),6,()=>pin());hand('Vice City',640,600,56,PINK);}}},
+  tv:{draw(t){paper(t);at(450,520,popAt(t,.05,.5),1,()=>retroTV(t));if(S.y!=null)at(450,830,popAt(t,S.y),2,()=>stamp('2002',PINK,80));}},
+  duo:{draw(t){paper(t);if(S.l!=null)figure(300,PINK,'Lucia',t,false);if(S.j!=null)figure(620,CYAN,'Jason',t,true);
+    if(S.cpl!=null)at(460,330,popAt(t,S.cpl),3,()=>{ctx.fillStyle=RED;ctx.beginPath();ctx.moveTo(0,40);ctx.bezierCurveTo(-90,-20,-50,-90,0,-45);ctx.bezierCurveTo(50,-90,90,-20,0,40);ctx.fill();stroke(6);ctx.stroke();});}},
+  follow:{draw(t){paper(t);at(450,560,popAt(t,.05,.5),1,()=>{ctx.scale(.75,.75);logo();});at(450,900,popAt(t,.4),2,()=>{ctx.rotate(-.04);marker(-260,-40,520,80);hand('gleich: das Wichtigste',0,0,58);});}},
+  plat:{draw(t){paper(t);at(260,520,popAt(t,.05,.5),1,()=>consoleBox('PS5','#3b6ff5'));at(640,520,popAt(t,.35,.5),2,()=>consoleBox('XBOX SERIES','#2f9e5a'));
+    if(S.pc!=null){ctx.fillStyle='rgba(235,228,211,.94)';ctx.fillRect(0,0,VW,1100);at(450,520,popAt(t,S.pc,.4),3,()=>monitor());at(450,850,popAt(t,S.pc+.4,.3),4,()=>stamp('NOCH NICHT',RED,60));}}},
+  pre:{draw(t){paper(t);at(450,360,popAt(t,.05,.5),1,()=>{ctx.scale(.9,.9);calendar('NOVEMBER','12',GREEN);});at(450,700,popAt(t,.3),2,()=>bar(Math.min(1,t*.25),'Vorladen…'));
+    if(S.price!=null){ctx.fillStyle='rgba(235,228,211,.94)';ctx.fillRect(0,0,VW,1100);at(450,520,popAt(t,S.price,.4),3,()=>priceTag('79,99 $'));hand('Standard-Edition, USA',450,700,54);}}},
+  fake:{draw(t){paper(t);at(450,520,popAt(t,.05,.5),1,()=>hdd());if(S.fk!=null)at(450,520,popAt(t,S.fk,.3),2,()=>stamp('FAKE',RED,110));}},
+  delay:{draw(t){paper(t);[['2025','✗',RED,170],['MAI 26','✗',RED,450],['19.11.','✓',GREEN,730]].forEach(([a,b,c,x],i)=>{const t0=(S.d0??99)+i*.6;at(x,520,popAt(t,t0),i+1,()=>{ctx.scale(.62,.62);calendar('GTA 6',a,c);});if(t>t0+.3)at(x,760,popAt(t,t0+.3),10+i,()=>bold(b,0,0,110,c));});}},
+  end:{draw(t){paper(t);at(450,520,popAt(t,.05,.5),1,()=>{ctx.scale(.8,.8);logo();});}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('hook');hud(false);sfx('hit',.5);sfx('whoosh',.3);
+  await capAt('Am 19. November kommt #GTA 6. Alles, was du wissen musst. Für *Dummies.*',10,()=>{S.dum=now();sfx('pop',.6);},{big:1});
+  go('map');sfx('pop',.6);
+  await capAt('Es spielt in *Leonida.* Das ist Rockstars Version von #Florida.',6,()=>{S.fl=now();sfx('scribble',.4);});
+  await capWords('Mittendrin: Vice City. Die Stadt gab es schon im GTA von *2002.*',i=>{if(i===0){S.vc=now();sfx('pop',.6);}if(i===3){go('tv');S.y=.5;sfx('click',.5);}});
+  go('duo');
+  await capAt('Du spielst zwei Figuren: *Lucia* und *Jason.* Ein Gangster-Pärchen.',3,()=>{S.l=now();sfx('pop',.6);setTimeout(()=>{S.j=now();sfx('pop',.6);},700);setTimeout(()=>{S.cpl=now();sfx('ding',.4);},1500);});
+  go('follow');followNudge('FOLG FÜR MEHR GTA');
+  await cap('Kurz: Folg mir. Jetzt kommt das #Wichtigste.');
+  go('plat');sfx('pop',.6);
+  await cap('Es erscheint nur für PlayStation 5 und Xbox Series X und *S.*');
+  await capAt('PC? Noch nicht #angekündigt.',0,()=>{S.pc=now();sfx('hit',.5);});
+  go('pre');sfx('pop',.6);
+  await cap('Vorladen geht ab dem *12. November.*');
+  await capAt('In den USA kostet es knapp 80 #Dollar.',0,()=>{S.price=now();sfx('ding',.5);});
+  go('fake');sfx('pop',.5);
+  await capAt('Und das Gerücht mit 677 Gigabyte Speicher? #Fake.',6,()=>{S.fk=now();sfx('hit',.7);});
+  go('delay');
+  await capAt('Übrigens: GTA 6 wurde schon zweimal #verschoben.',0,()=>{S.d0=now();sfx('scribble',.4);});
+  go('end');sfx('pop',.6);
+  dimT=.2;await cap('Holst du es dir am ersten Tag? Ja oder *nein?*',{big:1});
+  dimT=.35;outro('GTA 6 FÜR DUMMIES','MEHR <span class="hl">GAMING</span>','JA ODER NEIN? 👇');
+  await sleep(3800);finish();
+}
+boot('hook');
+</script>
+</body>
+</html>
