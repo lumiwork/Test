@@ -1,0 +1,12 @@
+Du siehst eine Werbung. Und dein Handy ist gehackt. [pause]
+Genau das haben Forscher vom Citizen Lab gerade aufgedeckt. [pause]
+Eine israelische Werbefirma namens Discover-Tech kaufte ganz normale Werbeplätze. [pause]
+Darüber lieferte sie Spionage-Software der Firma Candiru aus. [pause]
+Das Gemeine: Du musst nichts anklicken. Die Werbung muss nur laden. [pause]
+Solche Angriffe nutzen meist Zero-Days: Lücken, die der Hersteller noch nicht kennt. [pause]
+Die Werbung lief in über siebzigtausend Apps und hundertzwanzigtausend Webseiten. [pause]
+Betroffen war zum Beispiel der Sender Al Dschasira. [pause]
+Die Anzeigen erreichten sogar Netzwerke von Nato und EU-Parlament. [pause]
+Was du tun kannst: Handy und Browser immer updaten. [pause]
+Und in den Einstellungen die Werbe-ID ausschalten. [pause]
+Blockierst du Werbung auf deinem Handy? Ja oder nein?

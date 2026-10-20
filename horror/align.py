@@ -11,7 +11,8 @@ ZAHLEN = {"vierzig": "40", "drei": "3", "vier": "4", "zwölf": "12", "dreizehn":
           "zweiundzwanzig": "22", "dreiundzwanzig": "23", "fünfundzwanzig": "25", "dreißig": "30", "fünfzehn": "15", "vierundzwanzig": "24", "zweitausendneunzehn": "2019",
           "fünf": "5", "zweihundertfünfzig": "250", "achtundachtzig": "88", "hunderteinunddreißig": "131", "einhunderteinunddreißig": "131",
           "hundertvierunddreißig": "134", "einhundertvierunddreißig": "134", "fünfzehntausend": "15000", "zweitausendsechsundzwanzig": "2026",
-          "vierhunderttausend": "400000", "achtzehn": "18"}
+          "vierhunderttausend": "400000", "achtzehn": "18",
+          "siebzigtausend": "70000", "hundertzwanzigtausend": "120000"}
 
 
 def norm(w):
