@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Top 5 Horrorfilme laut Puls</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@600;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i></div><div id="clock"></div><div id="loc"></div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">TOP 5 HORRORFILME · LAUT PULS</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script src="../engine/papier.js"></script>
+<script>
+// Quelle: „Science of Scare“ 2026 (MoneySuperMarket, veröffentlicht Okt. 2026): 250 Zuschauer mit Pulsmessung.
+// Platz 1–5: Sinister, Host, Skinamarink, Insidious, Conjuring. Host: höchster Durchschnittspuls (88). Sinister: Spitze 131.
+// Resident Evil (2026): größter je gemessener Jumpscare (134). Skinamarink-Budget: 15.000 $.
+VIG=.6;const ORANGE='#ff8a3d';
+// ---------- Bausteine ----------
+// Abdunkeln: je näher Platz 1, desto dunkler das Papier
+function darken(a){if(a>0){ctx.fillStyle=`rgba(25,12,10,${a})`;ctx.fillRect(0,0,VW,VH);}}
+// EKG-Linie, die von links nach rechts läuft; spike = Ausschlag-Höhe
+function ekg(t,w,bpm,col=RED,spike=1){stroke(7,col);ctx.beginPath();const per=60/bpm;
+  for(let x=-w/2;x<=w/2;x+=4){const ph=((x/w*2.4-t)/per%1+1)%1;let y=0;
+    if(ph>.30&&ph<.34)y=-18*spike;else if(ph>.34&&ph<.38)y=90*spike*(1-Math.abs(ph-.36)/.02)*-1;else if(ph>.38&&ph<.42)y=40*spike;else if(ph>.5&&ph<.6)y=-14*Math.sin((ph-.5)/.1*Math.PI);
+    x===-w/2?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();}
+function heartShape(s,col=RED){ctx.save();ctx.scale(s,s);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(0,40);ctx.bezierCurveTo(-90,-20,-50,-90,0,-45);ctx.bezierCurveTo(50,-90,90,-20,0,40);ctx.closePath();ctx.fill();stroke(6/s);ctx.stroke();ctx.restore();}
+const beat=(t,bpm)=>{const p=(t*bpm/60)%1;return 1+.12*Math.max(0,1-p*6)+.06*Math.max(0,1-Math.abs(p-.25)*8);};
+// Platzierung: erst groß in der Mitte, sobald das erste Bild kommt (tv) klein oben auf einem Papierstreifen
+function fitBold(txt,max,w){ctx.font=`900 ${max}px Montserrat, sans-serif`;return Math.min(max,max*w/ctx.measureText(txt).width);}
+function rank(t,n,title,year,tv){const lead=n===1?RED:YEL,num=n===1?'#fff':INK;
+  if(tv==null||t<tv){at(450,520,popAt(t,.05,.5),90,()=>{ctx.rotate(-.03);ctx.fillStyle=lead;ctx.beginPath();ctx.arc(0,-60,150,0,7);ctx.fill();stroke(10);ctx.stroke();bold('#'+n,0,-50,160,num);
+      ctx.fillStyle='#fbf6ea';rr(ctx,-380,130,760,190,14);ctx.fill();stroke(7);rr(ctx,-380,130,760,190,14);ctx.stroke();
+      bold(title,0,200,fitBold(title,110,700));hand(year,0,280,52,'#6b6253');});return;}
+  at(450,190,popAt(t,tv,.4),90,()=>{ctx.rotate(-.03);const sz=fitBold(title,72,470);ctx.font=`900 ${sz}px Montserrat, sans-serif`;const w=ctx.measureText(title).width;
+    ctx.fillStyle='#fbf6ea';rr(ctx,-200,-70,w+110,150,12);ctx.fill();stroke(6);rr(ctx,-200,-70,w+110,150,12);ctx.stroke();
+    ctx.fillStyle=lead;ctx.beginPath();ctx.arc(-250,0,92,0,7);ctx.fill();stroke(8);ctx.stroke();bold('#'+n,-250,6,96,num);
+    bold(title,-140,-14,sz,INK,'left');hand(year,-138,48,44,'#6b6253','left');});}
+// Kinosaal: Leinwand mit Rauschen, Reihen von Köpfen
+function cinema(t,heads){ctx.fillStyle='#2b2926';rr(ctx,-330,-240,660,300,10);ctx.fill();stroke(8);rr(ctx,-330,-240,660,300,10);ctx.stroke();
+  for(let i=0;i<220;i++){const x=-320+((i*97+Math.floor(t*12)*31)%640),y=-230+((i*53+Math.floor(t*12)*17)%280);ctx.fillStyle=`rgba(255,255,255,${(i%5)*.06})`;ctx.fillRect(x,y,6,6);}
+  for(let r=0;r<3;r++)for(let i=0;i<8-r%2;i++){const k=r*8+i;if(k>=heads)continue;const x=-300+i*86+(r%2)*43,y=150+r*90;ctx.fillStyle=r===2?INK:'#4a4540';ctx.beginPath();ctx.arc(x,y,30,0,7);ctx.fill();ctx.fillRect(x-38,y+22,76,60);}}
+function farmhouse(t){ctx.fillStyle='#c0574a';ctx.beginPath();ctx.moveTo(-220,-20);ctx.lineTo(-220,180);ctx.lineTo(220,180);ctx.lineTo(220,-20);ctx.lineTo(0,-170);ctx.closePath();ctx.fill();stroke(8);ctx.stroke();
+  ctx.fillStyle='#fbfaf5';ctx.beginPath();ctx.moveTo(-250,0);ctx.lineTo(0,-200);ctx.lineTo(250,0);ctx.stroke();
+  for(const[x,y]of[[-130,40],[130,40],[0,-70]]){ctx.fillStyle=INK;rr(ctx,x-40,y-45,80,90,6);ctx.fill();stroke(6);rr(ctx,x-40,y-45,80,90,6);ctx.stroke();}
+  ctx.fillStyle='#4a2a22';rr(ctx,-45,80,90,100,6);ctx.fill();stroke(6);rr(ctx,-45,80,90,100,6);ctx.stroke();
+  const e=.5+.5*Math.sin(t*3);ctx.fillStyle=`rgba(255,230,140,${e})`;ctx.beginPath();ctx.arc(-145,30,6,0,7);ctx.arc(-115,30,6,0,7);ctx.fill();}
+function handShape(flip){ctx.save();ctx.scale(flip,1);ctx.fillStyle='#f2d7b0';ctx.beginPath();ctx.moveTo(-40,90);ctx.lineTo(-46,-10);
+  for(let i=0;i<4;i++){const x=-40+i*24;ctx.lineTo(x,-70+Math.abs(i-1.5)*14);ctx.quadraticCurveTo(x+12,-86+Math.abs(i-1.5)*14,x+20,-60+Math.abs(i-1.5)*14);}
+  ctx.lineTo(48,0);ctx.quadraticCurveTo(80,-20,86,-6);ctx.quadraticCurveTo(70,40,40,90);ctx.closePath();ctx.fill();stroke(6);ctx.stroke();ctx.restore();}
+function followBtn(t,t0){const s=t0!=null&&t>t0+1.1;ctx.fillStyle='#2b2926';ctx.beginPath();ctx.arc(0,0,150,0,7);ctx.fill();stroke(8);ctx.stroke();
+  ctx.fillStyle='#fbfaf5';ctx.beginPath();ctx.arc(0,-10,70,Math.PI,0);ctx.lineTo(70,70);for(let i=0;i<4;i++)ctx.lineTo(70-(i+.5)*35,i%2?70:50);ctx.lineTo(-70,70);ctx.closePath();ctx.fill();
+  ctx.fillStyle=INK;ctx.beginPath();ctx.ellipse(-26,-12,13,20,0,0,7);ctx.ellipse(26,-12,13,20,0,0,7);ctx.fill();
+  ctx.fillStyle=s?'#fff':RED;ctx.beginPath();ctx.arc(0,150,46,0,7);ctx.fill();stroke(7);ctx.stroke();
+  if(s){stroke(10,RED);ctx.beginPath();ctx.moveTo(-20,150);ctx.lineTo(-4,166);ctx.lineTo(24,134);ctx.stroke();}else{ctx.fillStyle='#fff';ctx.fillRect(-24,144,48,12);ctx.fillRect(-6,126,12,48);}}
+function finger(){ctx.fillStyle='#f2d7b0';rr(ctx,-22,-10,44,130,22);ctx.fill();stroke(6);rr(ctx,-22,-10,44,130,22);ctx.stroke();rr(ctx,-50,80,100,120,30);ctx.fillStyle='#f2d7b0';ctx.fill();ctx.stroke();}
+function bedDraw(){ctx.fillStyle='#8a6a4a';rr(ctx,-260,0,520,90,10);ctx.fill();stroke(8);rr(ctx,-260,0,520,90,10);ctx.stroke();ctx.fillRect(-260,-120,26,240);ctx.strokeRect(-260,-120,26,240);
+  ctx.fillStyle='#fbfaf5';rr(ctx,-230,-30,140,50,20);ctx.fill();stroke(6);rr(ctx,-230,-30,140,50,20);ctx.stroke();
+  ctx.fillStyle='#5ab0ff';rr(ctx,-110,-20,360,50,14);ctx.fill();stroke(6);rr(ctx,-110,-20,360,50,14);ctx.stroke();
+  ctx.fillStyle=INK;ctx.beginPath();ctx.arc(-150,-42,34,0,7);ctx.fill();stroke(4,PAPER);ctx.beginPath();ctx.moveTo(-162,-46);ctx.lineTo(-150,-46);ctx.moveTo(-142,-46);ctx.lineTo(-132,-46);ctx.stroke();}
+function ghost(t,a){ctx.globalAlpha=a;ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(0,-40,50,Math.PI,0);ctx.lineTo(50,40);for(let i=0;i<5;i++)ctx.lineTo(50-(i+.5)*20,40+(i%2?-12:8)+Math.sin(t*6+i)*4);ctx.lineTo(-50,40);ctx.closePath();ctx.fill();stroke(4,'rgba(31,29,26,.5)');ctx.stroke();
+  ctx.fillStyle=INK;ctx.beginPath();ctx.arc(-16,-46,7,0,7);ctx.arc(16,-46,7,0,7);ctx.fill();ctx.globalAlpha=1;}
+function shadowFig(t){ctx.fillStyle='#120c0b';ctx.beginPath();ctx.ellipse(0,-150,62,76,0,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(-70,-90);ctx.quadraticCurveTo(-110,120,-90,240);ctx.lineTo(90,240);ctx.quadraticCurveTo(110,120,70,-90);ctx.closePath();ctx.fill();
+  ctx.fillStyle=RED;ctx.beginPath();ctx.ellipse(0,-150,44,56,0,0,7);ctx.fill();ctx.fillStyle='#120c0b';ctx.beginPath();ctx.ellipse(-16,-160,9,6,.3,0,7);ctx.ellipse(16,-160,9,6,-.3,0,7);ctx.fill();
+  ctx.fillStyle=YEL;ctx.beginPath();ctx.arc(-16,-160,3+Math.sin(t*5),0,7);ctx.arc(16,-160,3+Math.sin(t*5),0,7);ctx.fill();}
+function door(a){ctx.globalAlpha=a;stroke(8);rr(ctx,-90,-170,180,340,6);ctx.stroke();ctx.beginPath();ctx.arc(60,0,9,0,7);ctx.stroke();ctx.globalAlpha=1;}
+function windowF(a){ctx.globalAlpha=a;stroke(8);ctx.strokeRect(-90,-80,180,160);ctx.beginPath();ctx.moveTo(0,-80);ctx.lineTo(0,80);ctx.moveTo(-90,0);ctx.lineTo(90,0);ctx.stroke();ctx.globalAlpha=1;}
+function blocks(){[[-70,0,RED],[0,0,BLUE],[-35,-62,YEL],[90,8,GREEN]].forEach(([x,y,c])=>{ctx.fillStyle=c;rr(ctx,x-30,y-30,60,60,6);ctx.fill();stroke(5);rr(ctx,x-30,y-30,60,60,6);ctx.stroke();});}
+function priceTag(txt){ctx.rotate(-.12);ctx.fillStyle='#fffdf5';ctx.beginPath();ctx.moveTo(-170,-50);ctx.lineTo(140,-50);ctx.lineTo(190,0);ctx.lineTo(140,50);ctx.lineTo(-170,50);ctx.closePath();ctx.fill();stroke(7);ctx.stroke();ctx.beginPath();ctx.arc(150,0,10,0,7);ctx.stroke();bold(txt,-15,4,52,RED);}
+function videoCall(t,lost){ctx.fillStyle='#fbfaf5';rr(ctx,-300,-200,600,380,16);ctx.fill();stroke(8);rr(ctx,-300,-200,600,380,16);ctx.stroke();
+  ctx.fillStyle='#d9d3c4';ctx.beginPath();ctx.moveTo(-350,210);ctx.lineTo(350,210);ctx.lineTo(310,180);ctx.lineTo(-310,180);ctx.closePath();ctx.fill();ctx.stroke();
+  for(let i=0;i<4;i++){const x=-280+(i%2)*285,y=-182+Math.floor(i/2)*178,dead=lost&&i===3;ctx.fillStyle=dead?'#120c0b':['#bfe3ff','#ffd9a8','#c9f2d4','#e3d4f5'][i];rr(ctx,x,y,275,168,10);ctx.fill();stroke(4);rr(ctx,x,y,275,168,10);ctx.stroke();
+    if(!dead){ctx.fillStyle=INK;ctx.beginPath();ctx.arc(x+137,y+70,30,0,7);ctx.fill();ctx.fillRect(x+97,y+105,80,63);ctx.fillStyle=PAPER;ctx.beginPath();ctx.arc(x+126,y+66,5,0,7);ctx.arc(x+148,y+66,5,0,7);ctx.fill();}
+    else{const f=Math.sin(t*20)>.3;if(f){ctx.fillStyle='rgba(255,255,255,.25)';for(let k=0;k<30;k++)ctx.fillRect(x+((k*47+Math.floor(t*14)*13)%270),y+((k*31)%160),5,5);}hand('Verbindung weg…',x+137,y+84,30,'#e8d9c0');}}
+  ctx.fillStyle=YEL;ctx.fillRect(-12,140,24,30);ctx.fillStyle=ORANGE;ctx.beginPath();ctx.ellipse(0,130+Math.sin(t*9)*2,8,14,0,0,7);ctx.fill();}
+function gauge(v,max,label){ctx.fillStyle='#fffdf5';ctx.beginPath();ctx.arc(0,0,150,Math.PI,0);ctx.closePath();ctx.fill();stroke(8);ctx.stroke();
+  for(let i=0;i<=10;i++){const a=Math.PI+i/10*Math.PI;stroke(5,i>6?RED:INK);ctx.beginPath();ctx.moveTo(Math.cos(a)*120,Math.sin(a)*120);ctx.lineTo(Math.cos(a)*140,Math.sin(a)*140);ctx.stroke();}
+  const a=Math.PI+Math.min(1,v/max)*Math.PI;stroke(10,RED);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*110,Math.sin(a)*110);ctx.stroke();ctx.fillStyle=INK;ctx.beginPath();ctx.arc(0,0,14,0,7);ctx.fill();
+  bold(String(Math.round(v)),0,60,72,RED);hand(label,0,120,42);}
+function reel(t,r){ctx.save();ctx.rotate(t);ctx.fillStyle='#4a4540';ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();stroke(6);ctx.stroke();ctx.fillStyle=PAPER;for(let i=0;i<5;i++){const a=i/5*Math.PI*2;ctx.beginPath();ctx.arc(Math.cos(a)*r*.55,Math.sin(a)*r*.55,r*.2,0,7);ctx.fill();}ctx.beginPath();ctx.arc(0,0,r*.12,0,7);ctx.fill();ctx.restore();}
+function filmBox(){ctx.fillStyle='#c79a5d';rr(ctx,-170,-60,340,170,8);ctx.fill();stroke(8);rr(ctx,-170,-60,340,170,8);ctx.stroke();ctx.fillStyle='#b5874c';ctx.beginPath();ctx.moveTo(-170,-60);ctx.lineTo(-210,-110);ctx.lineTo(-130,-110);ctx.lineTo(-90,-60);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(170,-60);ctx.lineTo(210,-110);ctx.lineTo(130,-110);ctx.lineTo(90,-60);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#fffdf5';rr(ctx,-110,0,220,60,4);ctx.fill();stroke(4);rr(ctx,-110,0,220,60,4);ctx.stroke();hand('Heimvideos',0,32,40);}
+function projector(t){ctx.fillStyle='#4a4540';rr(ctx,-110,-50,220,110,14);ctx.fill();stroke(8);rr(ctx,-110,-50,220,110,14);ctx.stroke();
+  for(const x of[-55,55]){ctx.save();ctx.translate(x,-100);reel(t*4,50);ctx.restore();}ctx.fillStyle='#2b2926';rr(ctx,100,-20,50,50,6);ctx.fill();ctx.stroke();ctx.fillRect(-70,60,20,40);ctx.fillRect(50,60,20,40);}
+function eyes(t,a){ctx.globalAlpha=a;for(const[x,y,s]of[[-120,-30,1],[120,10,.8],[0,60,1.2]]){const bl=Math.sin(t*1.7+x)>.95?.15:1;ctx.fillStyle='#fff3c4';ctx.beginPath();ctx.ellipse(x-18*s,y,10*s,7*s*bl,0,0,7);ctx.ellipse(x+18*s,y,10*s,7*s*bl,0,0,7);ctx.fill();}ctx.globalAlpha=1;}
+
+// ---------- Szenen ----------
+const scenes={
+  hook:{draw(t){paper(t);
+    at(450,470,popAt(t,.05,.5),1,()=>cinema(t,S.crowd!=null?Math.min(23,Math.floor((t-S.crowd)*14)):0));
+    if(S.crowd!=null)at(720,170,popAt(t,S.crowd+.6),2,()=>{ctx.rotate(.06);marker(-110,-40,220,80);bold('250',0,4,76,RED);});
+    if(S.pulse!=null){at(450,880,fadeAt(t,S.pulse,.6),3,()=>ekg(t,760,90));at(130,880,popAt(t,S.pulse),4,()=>heartShape(.9*beat(t,90)));}}},
+  title:{draw(t){paper(t);
+    at(450,330,popAt(t,.05),1,()=>heartShape(1.8*beat(t,110)));
+    at(450,600,popAt(t,.3),2,()=>{bold('TOP 5',0,-70,120,RED);bold('HORRORFILME',0,40,80);});
+    at(450,770,popAt(t,.7),3,()=>{ctx.rotate(-.05);marker(-220,-38,440,76);hand('laut Pulsmesser',0,0,74);});}},
+  r5:{draw(t){paper(t);rank(t,5,'CONJURING','Die Heimsuchung · 2013',S.house);
+    if(S.house!=null)at(450,620,popAt(t,S.house,.5),2,()=>farmhouse(t));
+    if(S.clap!=null){const c=t-S.clap;ctx.fillStyle=`rgba(25,12,10,${Math.min(.85,c*1.2)})`;ctx.fillRect(0,330,VW,770);
+      const close=c>1.2&&((c-1.2)%1.1)<.18;const dx=close?70:150;at(450-dx,700,popAt(t,S.clap+.5),3,()=>{ctx.rotate(.3);handShape(1);});at(450+dx,700,popAt(t,S.clap+.5),4,()=>{ctx.rotate(-.3);handShape(-1);});
+      if(close)at(450,500,1,5,()=>{ctx.rotate(-.08);hand('KLATSCH!',0,0,90,'#ffd23f');});}}},
+  follow:{draw(t){paper(t);
+    at(450,520,popAt(t,.05,.5),1,()=>followBtn(t,S.tap));
+    if(S.tap!=null){const p=ease((t-S.tap)/.8);const d=t-S.tap>.8&&t-S.tap<1.1?14:0;at(560-p*110,1000-p*270+d,1,2,()=>{ctx.rotate(-.2);finger();});
+      if(t-S.tap>1.1&&t-S.tap<1.7){const r=(t-S.tap-1.1)/.6;stroke(8,`rgba(230,57,70,${1-r})`);ctx.beginPath();ctx.arc(450,670,40+r*90,0,7);ctx.stroke();}}
+    at(450,230,popAt(t,.4),3,()=>{ctx.rotate(-.04);marker(-250,-40,500,80);hand('für mehr Horror',0,0,76);});}},
+  r4:{draw(t){paper(t);darken(.12);rank(t,4,'INSIDIOUS','2010',S.bed);
+    if(S.bed!=null){at(450,760,popAt(t,S.bed,.5),2,()=>bedDraw());zzz(330,630,t);}
+    if(S.soul!=null){const p=ease((t-S.soul)/1.6);at(300+p*40,700-p*260,1,3,()=>ghost(t,.85));}
+    if(S.shadow!=null){const p=ease((t-S.shadow)/2);at(820-p*120,640,1,4,()=>shadowFig(t));}}},
+  r3:{draw(t){paper(t);darken(.22);rank(t,3,'SKINAMARINK','2022',S.kids);
+    const gone=S.vanish!=null?1-fadeAt(t,S.vanish,1.6):1;
+    if(S.kids!=null){ctx.fillStyle=`rgba(10,6,5,${Math.min(.7,(t-S.kids)*.5)})`;ctx.fillRect(0,330,VW,770);
+      at(250,620,1,2,()=>door(gone));at(640,520,1,3,()=>windowF(gone));
+      stick(380,1010,.7,t,{seed:4,scared:1});stick(500,1010,.55,t,{seed:5,scared:1});at(700,960,1,5,()=>blocks());
+      if(S.vanish!=null&&t-S.vanish>.4&&t-S.vanish<2.2)at(450,430,popAt(t,S.vanish+.4),6,()=>hand('wo ist die Tür?!',0,0,60,'#ffd23f'));}
+    if(S.price!=null)at(450,620,popAt(t,S.price),7,()=>priceTag('15.000 $'));}},
+  r2:{draw(t){paper(t);darken(.3);rank(t,2,'HOST','2020',S.call);
+    if(S.call!=null)at(450,600,popAt(t,S.call,.5),2,()=>videoCall(t,S.lost!=null&&t>S.lost));
+    if(S.avg!=null){ctx.fillStyle='rgba(25,12,10,.6)';ctx.fillRect(0,330,VW,770);at(450,700,popAt(t,S.avg),3,()=>gauge(Math.min(88,(t-S.avg)*70),140,'Schläge pro Minute'));
+      at(160,480,popAt(t,S.avg+.4),4,()=>heartShape(.8*beat(t,88)));}}},
+  r1:{draw(t){paper(t);darken(.42);rank(t,1,'SINISTER','2012',S.box);
+    if(S.box!=null&&S.proj==null)at(450,680,popAt(t,S.box,.5),2,()=>{filmBox();for(const[x,r]of[[-70,52],[60,44]]){ctx.save();ctx.translate(x,-120+Math.sin(t*2+x)*6);reel(0,r);ctx.restore();}});
+    if(S.proj!=null){ctx.fillStyle='rgba(8,4,4,.75)';ctx.fillRect(0,330,VW,770);
+      ctx.save();ctx.globalCompositeOperation='lighter';const g=ctx.createLinearGradient(220,900,700,560);g.addColorStop(0,'rgba(255,240,200,.45)');g.addColorStop(1,'rgba(255,240,200,.05)');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(270,880);ctx.lineTo(820,430);ctx.lineTo(820,760);ctx.closePath();ctx.fill();ctx.restore();
+      at(230,920,1,3,()=>{ctx.scale(.75,.75);projector(t);});eyes(t,fadeAt(t,S.proj+1,1));ctx.save();ctx.translate(560,560);eyes(t,fadeAt(t,S.proj+1,1));ctx.restore();}
+    if(S.peak!=null){ctx.fillStyle='rgba(25,12,10,.75)';ctx.fillRect(0,330,VW,770);at(450,640,1,4,()=>ekg(t*1.6,760,131,RED,1.6));at(450,880,popAt(t,S.peak),5,()=>{bold('131',0,0,120,'#fff');hand('Schläge pro Minute',0,80,44,'#f2d7b0');});}}},
+  bonus:{draw(t){paper(t);darken(.5);
+    at(450,200,popAt(t,.05),1,()=>{ctx.rotate(-.04);ctx.fillStyle=YEL;rr(ctx,-160,-50,320,100,16);ctx.fill();stroke(7);rr(ctx,-160,-50,320,100,16);ctx.stroke();bold('BONUS',0,4,64);});
+    at(450,600,1,2,()=>ekg(t,760,S.boo!=null&&t>S.boo?134:72,RED,S.boo!=null&&t>S.boo?2:1));
+    if(S.boo!=null){at(450,430,popAt(t,S.boo,.3),3,()=>{ctx.rotate(-.1);bold('BUH!',0,0,140,'#fff');});
+      at(450,840,popAt(t,S.boo+.4),4,()=>{bold('134',0,0,110,RED);hand('Resident Evil (2026)',0,74,48,'#f2d7b0');});}}},
+  end:{draw(t){paper(t);
+    const L=[['#5','Conjuring'],['#4','Insidious'],['#3','Skinamarink'],['#2','Host'],['#1','Sinister']];
+    L.forEach(([n,ti],i)=>at(450,170+i*150,popAt(t,.1+i*.18),i+1,()=>{ctx.rotate(i%2?.02:-.02);ctx.fillStyle=i===4?RED:YEL;ctx.beginPath();ctx.arc(-240,0,52,0,7);ctx.fill();stroke(6);ctx.stroke();bold(n,-240,4,50,i===4?'#fff':INK);bold(ti.toUpperCase(),-160,4,58,INK,'left');
+      if(S.check!=null)at(260,0,popAt(t,S.check+i*.2),20+i,()=>{stroke(10,GREEN);ctx.beginPath();ctx.moveTo(-26,0);ctx.lineTo(-6,22);ctx.lineTo(30,-24);ctx.stroke();});}));}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('hook');hud(false);
+  await capAt('Für eine Studie schauten #250 Menschen Horrorfilme.',3,()=>{S.crowd=now();sfx('whoosh',.5);});
+  await capAt('Dabei wurde ihr *Puls* gemessen.',2,()=>{S.pulse=now();sfx('heart',.9);setTimeout(()=>sfx('heart',.9),700);setTimeout(()=>sfx('heart',.9),1400);});
+  go('title');sfx('hit',.5);sfx('heart',.8);
+  await cap('Das sind die 5 #gruseligsten Horrorfilme. Laut *Pulsmesser.*',{big:1});
+  go('r5');sfx('pop',.7);
+  await capAt('Platz fünf: ~Conjuring. Die Heimsuchung.',2,()=>sfx('ding',.4));
+  await capAt('Eine Familie zieht in ein altes #Farmhaus.',0,()=>{S.house=now();sfx('creak',.5);});
+  await capAt('Ein Versteckspiel mit Klatschen… wird zum #Albtraum.',2,()=>{S.clap=now();sfx('drone',.4);setTimeout(()=>sfx('knock',.8),1200);setTimeout(()=>sfx('knock',.8),2300);});
+  go('follow');sfx('pop',.7);
+  await capAt('Für mehr Content wie diesen: *folg* mir. Jetzt wird es #schlimmer.',4,()=>{S.tap=now()-.4;setTimeout(()=>sfx('tap',.9),700);setTimeout(()=>sfx('ding',.5),750);});
+  go('r4');sfx('pop',.7);sfx('heart',.6);
+  await cap('Platz vier: ~Insidious.');
+  await capAt('Ein Junge schläft ein. Und wacht nicht mehr #auf.',0,()=>{S.bed=now();sfx('tick',.4);});
+  await capAt('Sein Geist ist woanders. Und etwas will in seinen #Körper.',0,()=>{S.soul=now();sfx('whisper',.5);setTimeout(()=>{S.shadow=now();sfx('drone',.5);},1700);});
+  go('r3');sfx('pop',.7);sfx('heart',.7);
+  await cap('Platz drei: ~Skinamarink.');
+  await capAt('Zwei Kinder. Mitten in der Nacht. Papa ist #weg.',0,()=>{S.kids=now();sfx('hum',.4);});
+  await capAt('Und Fenster und Türen #verschwinden.',0,()=>{S.vanish=now();sfx('whoosh',.5);setTimeout(()=>sfx('hit',.5),900);});
+  await capAt('Gekostet hat der Film nur #15.000 Dollar.',4,()=>{S.price=now();sfx('ding',.6);});
+  go('r2');sfx('pop',.7);sfx('heart',.8);
+  await cap('Platz zwei: ~Host.');
+  await capAt('Freunde machen eine Geisterbeschwörung. Per #Videocall.',0,()=>{S.call=now();sfx('click',.5);setTimeout(()=>{S.lost=now();sfx('static',.5);},2200);});
+  await capAt('Hier schlug der Puls am schnellsten: #88 pro Minute. Im Schnitt.',3,()=>{S.avg=now();sfx('heart',.9);setTimeout(()=>sfx('heart',.9),680);setTimeout(()=>sfx('heart',.9),1360);});
+  go('r1');sfx('hit',.7);sfx('heart',.9);
+  await capAt('Und Platz eins: ~Sinister.',2,()=>sfx('ding',.4));
+  await capAt('Ein Autor findet auf dem Dachboden alte #Filmrollen.',0,()=>{S.box=now();sfx('creak',.6);});
+  await capAt('Was darauf ist, willst du nicht #sehen.',0,()=>{S.proj=now();sfx('flicker',.6);});
+  await capAt('Puls bis #131. Schon wieder die *Nummer* eins.',0,()=>{S.peak=now();for(let i=0;i<5;i++)setTimeout(()=>sfx('heart',.9),i*460);});
+  go('bonus');sfx('pop',.7);
+  await cap('Bonus: Der größte #Schreck, der je gemessen wurde?');
+  await capAt('Resident Evil von 2026. #134 Schläge pro Minute.',0,()=>{S.boo=now()+.6;setTimeout(()=>sfx('hit',.9),600);for(let i=0;i<4;i++)setTimeout(()=>sfx('heart',.9),900+i*450);});
+  go('end');sfx('pop',.7);
+  await capAt('Welchen davon hast du schon *gesehen?* Schreib es in die Kommentare.',0,()=>{S.check=now()+1;});
+  dimT=.35;outro('TOP 5 HORROR','MEHR <span class="hl">HORROR</span>','WELCHEN HAST DU GESEHEN? 👇');
+  await sleep(3500);finish();
+}
+boot('hook');
+</script>
+</body>
+</html>
