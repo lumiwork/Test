@@ -10,6 +10,6 @@ Aufbau nach dem Muster erfolgreicher Serien-Posts (z. B. „Der Bunker“, Geeko
    Nicht um Likes bitten (laut Metricool-Studie 2026 senkt das die Interaktion).
 5. **8–12 Hashtags** in dieser Reihenfolge: Serie/Teil → Thema → Genre → #deutschland → #fyp.
 
-Beim Hochladen „KI-generierter Inhalt“ einschalten (die Stimmen sind KI-Stimmen).
+Schalter „KI-generierter Inhalt“: bei den gezeichneten Videos mit KI-Erzählstimme nicht nötig – TikTok verlangt ihn nur für realistische KI-Inhalte, die man für echte Aufnahmen halten könnte (z. B. KI-Fotos/-Videos echter Menschen oder Orte). Kommt so etwas vor, einschalten.
 
 Jede Video-Seite hat ihre fertige Beschreibung in `tiktok.txt`.
