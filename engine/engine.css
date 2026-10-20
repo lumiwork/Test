@@ -25,7 +25,7 @@ body{display:flex;align-items:center;justify-content:center;font-family:Montserr
 #cap .w{display:inline-block;overflow-wrap:anywhere;margin:0 .17em;padding:0 .1em;border-radius:.18em;color:#fff;transition:transform .12s cubic-bezier(.2,1.6,.4,1),background-color .1s,color .1s;
   text-shadow:.05em .05em 0 #000,-.05em .05em 0 #000,.05em -.05em 0 #000,-.05em -.05em 0 #000,0 .11em 0 rgba(0,0,0,.6)}
 #cap .w.hl{color:var(--lime)} #cap .w.red{color:var(--red)} #cap .w.gold{color:var(--gold)}
-#cap .w.on{transform:scale(1.16) rotate(-2deg);color:var(--lime)}
+#cap .w.on{transform:scale(var(--s,1.16)) rotate(-2deg);color:var(--lime)}
 #cap .w.on.hl{background:var(--lime);color:#111;text-shadow:0 .08em 0 rgba(0,0,0,.35)}
 #cap .w.on.red{background:var(--red);color:#fff;text-shadow:0 .08em 0 rgba(0,0,0,.35)}
 #cap .w.on.gold{background:var(--gold);color:#111;text-shadow:0 .08em 0 rgba(0,0,0,.35)}

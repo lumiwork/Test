@@ -171,7 +171,10 @@ function chunkWords(text){
 }
 function showChunk(ch){capEl.innerHTML='';const box=document.createElement('div');box.className='ch';
   const spans=ch.map(w=>{const s=document.createElement('span');s.className='w '+w.c;s.textContent=w.w;box.appendChild(s);return s;});
-  capEl.appendChild(box);return spans;}
+  capEl.appendChild(box);
+  // Lange Wörter weniger vergrößern, damit sie den Nachbarn nicht berühren
+  spans.forEach(s=>{const m=parseFloat(getComputedStyle(s).marginLeft)||0;s.style.setProperty('--s',Math.min(1.16,1+2*m/Math.max(1,s.offsetWidth)).toFixed(3));});
+  return spans;}
 const light=(spans,i)=>spans.forEach((s,j)=>s.classList.toggle('on',j===i));
 async function cap(text,o={}){
   const chunks=chunkWords(text);
