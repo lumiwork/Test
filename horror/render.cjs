@@ -70,7 +70,7 @@ const run=(args)=>new Promise((res,rej)=>{const p=spawn('ffmpeg',args,{stdio:['i
   if(AUDIO){
     if(log.length!==VOICE.lines.length)throw new Error(`Untertitel ${log.length} ≠ Sätze ${VOICE.lines.length}`);
     inputs.push('-i',AUDIO);const vi=k++;
-    VOICE.lines.forEach((l,i)=>{const s=Math.max(l.s-PRE,i?VOICE.lines[i-1].e+.02:0),e=l.e+POST,d=Math.round((log[i]/1000-(l.s-s))*1000);
+    VOICE.lines.forEach((l,i)=>{const s=Math.max(l.s-PRE,i?VOICE.lines[i-1].e+.02:0),e=l.e+POST,d=Math.max(0,Math.round((log[i]/1000-(l.s-s))*1000));
       chains.push(`[${vi}:a]atrim=start=${s.toFixed(3)}:end=${e.toFixed(3)},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=mono,afade=t=in:d=0.03,afade=t=out:st=${(e-s-.06).toFixed(3)}:d=0.06,${l.fx==='telefon'?TELEFON:''}adelay=${d}:all=1[a${i}]`);});
     chains.push(`${VOICE.lines.map((_,i)=>`[a${i}]`).join('')}amix=inputs=${VOICE.lines.length}:normalize=0,loudnorm=I=-16:TP=-2:LRA=11[vo]`);voiceOut='vo';
   }
