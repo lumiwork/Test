@@ -65,35 +65,45 @@ const run=(args)=>new Promise((res,rej)=>{const p=spawn('ffmpeg',args,{stdio:['i
   const dur=n/FPS;console.log(`Video fertig: ${dur.toFixed(2)} s, ${n} Frames`);
   if(!AUDIO&&!sfxLog.length){fs.renameSync(VIDEO,OUT);console.log('Video:',OUT);return;}
 
-  const inputs=['-i',VIDEO],chains=[];let k=1,voiceOut=null,sfxOut=null;
+  // Ton in getrennten Durchgängen: Stimme und Effekte zuerst einzeln als WAV, dann zusammenmischen.
+  // (Alles in einem Filtergraph mit asplit + sidechaincompress hat bei manchen Videos den letzten Satz abgeschnitten.)
+  const base=OUT.replace(/\.mp4$/,''),tmp=[];
+  const bounce=async(inputs,chains,label,file)=>{await run(['-y','-loglevel','error',...inputs,'-filter_complex',chains.join(';'),'-map',`[${label}]`,'-ar','48000','-ac','1',file]);tmp.push(file);return file;};
+  let voiceWav=null,sfxWav=null;
   // Stimme: jeden Satz aus der Aufnahme schneiden und an den Start seines Untertitels legen
   if(AUDIO){
     if(log.length!==VOICE.lines.length)throw new Error(`Untertitel ${log.length} ≠ Sätze ${VOICE.lines.length}`);
-    inputs.push('-i',AUDIO);const vi=k++;
+    const chains=[];
     VOICE.lines.forEach((l,i)=>{const s=Math.max(l.s-PRE,i?VOICE.lines[i-1].e+.02:0),e=l.e+POST,d=Math.max(0,Math.round((log[i]/1000-(l.s-s))*1000));
-      chains.push(`[${vi}:a]atrim=start=${s.toFixed(3)}:end=${e.toFixed(3)},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=mono,afade=t=in:d=0.03,afade=t=out:st=${(e-s-.06).toFixed(3)}:d=0.06,${l.fx==='telefon'?TELEFON:''}adelay=${d}:all=1[a${i}]`);});
-    chains.push(`${VOICE.lines.map((_,i)=>`[a${i}]`).join('')}amix=inputs=${VOICE.lines.length}:normalize=0,loudnorm=I=-16:TP=-2:LRA=11[vo]`);voiceOut='vo';
+      chains.push(`[0:a]atrim=start=${s.toFixed(3)}:end=${e.toFixed(3)},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=mono,afade=t=in:d=0.03,afade=t=out:st=${(e-s-.06).toFixed(3)}:d=0.06,${l.fx==='telefon'?TELEFON:''}adelay=${d}:all=1[a${i}]`);});
+    chains.push(`${VOICE.lines.map((_,i)=>`[a${i}]`).join('')}amix=inputs=${VOICE.lines.length}:normalize=0,loudnorm=I=-16:TP=-2:LRA=11,aresample=48000[vo]`);
+    voiceWav=await bounce(['-i',AUDIO],chains,'vo',base+'.stimme.wav');
   }
   // Soundeffekte: einzelne Sounds (sfx) und Schleifen (bed, Lautstärke 0 = aus) an ihre Zeitpunkte legen
   if(sfxLog.length){
-    const ev=[],open={};
+    const ev=[],open={},inputs=[],chains=[];
     for(const e of sfxLog){const t=e.t/1000;
       if(!e.bed){ev.push({n:e.n,start:t,v:e.v});continue;}
       if(open[e.n]){open[e.n].end=t;ev.push(open[e.n]);delete open[e.n];}
       if(e.v>0)open[e.n]={n:e.n,start:t,v:e.v,loop:true};}
     for(const o of Object.values(open)){o.end=dur;ev.push(o);}
     ev.forEach((e,i)=>{const f=path.join(SOUNDS,e.n+'.wav');if(!fs.existsSync(f))throw new Error('Sound fehlt: '+f);
-      if(e.loop)inputs.push('-stream_loop','-1');inputs.push('-i',f);const si=k++,d=Math.round(e.start*1000);
+      if(e.loop)inputs.push('-stream_loop','-1');inputs.push('-i',f);const d=Math.round(e.start*1000);
       const len=e.loop?Math.max(.5,e.end-e.start):0;
-      chains.push(`[${si}:a]aformat=sample_rates=48000:channel_layouts=mono,`+(e.loop?`atrim=0:${len.toFixed(3)},asetpts=PTS-STARTPTS,afade=t=in:d=0.4,afade=t=out:st=${Math.max(0,len-.5).toFixed(3)}:d=0.5,`:'')+`volume=${e.v},adelay=${d}:all=1[s${i}]`);});
-    chains.push(`${ev.map((_,i)=>`[s${i}]`).join('')}amix=inputs=${ev.length}:normalize=0[sfx]`);sfxOut='sfx';
+      chains.push(`[${i}:a]aformat=sample_rates=48000:channel_layouts=mono,`+(e.loop?`atrim=0:${len.toFixed(3)},asetpts=PTS-STARTPTS,afade=t=in:d=0.4,afade=t=out:st=${Math.max(0,len-.5).toFixed(3)}:d=0.5,`:'')+`volume=${e.v},adelay=${d}:all=1[s${i}]`);});
+    chains.push(`${ev.map((_,i)=>`[s${i}]`).join('')}amix=inputs=${ev.length}:normalize=0[sfx]`);
+    sfxWav=await bounce(inputs,chains,'sfx',base+'.sfx.wav');
     console.log(`Soundeffekte: ${ev.length}`);
   }
-  if(voiceOut&&sfxOut){ // Effekte leiser, sobald gesprochen wird
-    chains.push(`[vo]asplit=2[vo1][vo2]`,`[sfx][vo2]sidechaincompress=threshold=0.02:ratio=6:attack=20:release=400[sfxd]`,`[vo1][sfxd]amix=inputs=2:normalize=0[mix]`);
-  }else chains.push(`[${voiceOut||sfxOut}]anull[mix]`);
+  const inputs=['-i',VIDEO],chains=[];
+  if(voiceWav&&sfxWav){ // Effekte leiser, sobald gesprochen wird (Stimme zweimal als eigene Eingabe statt asplit)
+    inputs.push('-i',voiceWav,'-i',voiceWav,'-i',sfxWav);
+    chains.push(`[3:a][2:a]sidechaincompress=threshold=0.02:ratio=6:attack=20:release=400[sfxd]`,`[1:a][sfxd]amix=inputs=2:normalize=0:duration=longest[mix]`);
+  }else{inputs.push('-i',voiceWav||sfxWav);chains.push(`[1:a]anull[mix]`);}
   chains.push(`[mix]alimiter=limit=0.89:level=false,aformat=channel_layouts=stereo,apad[aout]`);
+  if(process.env.DUMP)fs.writeFileSync(process.env.DUMP,JSON.stringify({inputs,chains,dur},null,1)); // Ton-Mix zum Nachprüfen speichern
   await run(['-y','-loglevel','error',...inputs,'-filter_complex',chains.join(';'),'-map','0:v','-map','[aout]','-c:v','copy','-c:a','aac','-b:a','192k','-ar','48000','-t',dur.toFixed(3),'-movflags','+faststart',OUT]);
+  tmp.forEach(f=>fs.unlinkSync(f));
   if(AUDIO)fs.writeFileSync(OUT.replace(/\.mp4$/,'')+'.untertitel.json',JSON.stringify(log.map((t,i)=>({start:+(t/1000).toFixed(3),text:VOICE.lines[i].text})),null,1));
   fs.unlinkSync(VIDEO);console.log('Video mit Ton:',OUT);
 })();
