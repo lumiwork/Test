@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vape für Dummies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@600;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i></div><div id="clock"></div><div id="loc"></div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">VAPE · FÜR DUMMIES</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script src="../engine/papier.js"></script>
+<script>
+// Aufklärung, keine Werbung: kein Dampfen im Bild, keine Marken, keine Geschmacksrichtungen.
+// Quellen: DKFZ (weniger schädlich als Rauchen, aber nicht harmlos; hohes Suchtpotenzial), JuSchG §10 (ab 18, auch nikotinfrei),
+// Rücknahmepflicht für Verkaufsstellen seit 1.7.2026.
+// ---------- Bausteine ----------
+const ORANGE='#ff8a3d',PURPLE='#8f6bff';
+function stamp(txt,col=RED,size=70){ctx.rotate(-.16);ctx.font=`900 ${size}px Montserrat, sans-serif`;const w=ctx.measureText(txt).width+50;stroke(10,col);rr(ctx,-w/2,-size*.75,w,size*1.5,14);ctx.stroke();bold(txt,0,4,size,col);}
+function vape(t,glowOn){ctx.fillStyle='#bcb5a4';rr(ctx,-60,-260,120,520,40);ctx.fill();stroke(8);rr(ctx,-60,-260,120,520,40);ctx.stroke();
+  ctx.fillStyle='#2b2926';rr(ctx,-26,-300,52,60,14);ctx.fill();stroke(6);rr(ctx,-26,-300,52,60,14);ctx.stroke();
+  ctx.fillStyle='rgba(143,107,255,.55)';rr(ctx,-40,-230,80,150,16);ctx.fill();stroke(5);rr(ctx,-40,-230,80,150,16);ctx.stroke();
+  stroke(5,glowOn?ORANGE:INK);ctx.beginPath();for(let i=0;i<=40;i++){const y=-70+i*1.2,x=Math.sin(i*.8)*22;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
+  ctx.fillStyle=glowOn&&Math.sin(t*8)>0?GREEN:'#8f8a80';ctx.beginPath();ctx.arc(0,200,12,0,7);ctx.fill();}
+function mist(t,x,y,amt=1){for(let i=0;i<14;i++){const p=(t*.45+i/14)%1;ctx.fillStyle=`rgba(200,205,215,${(1-p)*.5*amt})`;ctx.beginPath();ctx.arc(x+Math.sin(i*2.3+t)*40*p*3,y-p*360,18+p*70,0,7);ctx.fill();}}
+function battery(){ctx.fillStyle=GREEN;rr(ctx,-60,-110,120,220,16);ctx.fill();stroke(7);rr(ctx,-60,-110,120,220,16);ctx.stroke();ctx.fillStyle=INK;rr(ctx,-20,-130,40,20,4);ctx.fill();bold('+',0,-60,60);bold('–',0,60,60);}
+function coil(t,hot){stroke(10,hot?ORANGE:INK);ctx.beginPath();for(let i=0;i<=60;i++){const x=-90+i*3,y=Math.sin(i*.7)*36;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();if(hot)glow(0,0,140,'255,138,61',.35+.15*Math.sin(t*9));}
+function bottle(){ctx.fillStyle='rgba(143,107,255,.5)';rr(ctx,-80,-120,160,240,22);ctx.fill();stroke(7);rr(ctx,-80,-120,160,240,22);ctx.stroke();ctx.fillStyle='#2b2926';rr(ctx,-30,-170,60,50,8);ctx.fill();ctx.fillStyle='#fffdf5';rr(ctx,-62,-30,124,70,6);ctx.fill();stroke(4);rr(ctx,-62,-30,124,70,6);ctx.stroke();hand('Liquid',0,6,40);}
+function label(txt,col){ctx.font='700 46px Caveat, cursive';const w=ctx.measureText(txt).width+40;ctx.rotate(-.03);ctx.fillStyle=col;rr(ctx,-w/2,-34,w,68,10);ctx.fill();stroke(5);rr(ctx,-w/2,-34,w,68,10);ctx.stroke();hand(txt,0,2,46);}
+function cross(r=120){stroke(16,RED);ctx.beginPath();ctx.moveTo(-r,-r);ctx.lineTo(r,r);ctx.moveTo(r,-r);ctx.lineTo(-r,r);ctx.stroke();}
+function flame(){ctx.fillStyle=ORANGE;ctx.beginPath();ctx.moveTo(0,-120);ctx.quadraticCurveTo(90,-20,60,60);ctx.quadraticCurveTo(0,120,-60,60);ctx.quadraticCurveTo(-90,-20,0,-120);ctx.fill();stroke(7);ctx.stroke();ctx.fillStyle=YEL;ctx.beginPath();ctx.moveTo(0,-30);ctx.quadraticCurveTo(40,20,20,60);ctx.quadraticCurveTo(0,80,-20,60);ctx.quadraticCurveTo(-40,20,0,-30);ctx.fill();}
+function drop(){ctx.fillStyle=BLUE;ctx.beginPath();ctx.moveTo(0,-110);ctx.quadraticCurveTo(80,0,60,50);ctx.arc(0,50,60,0,Math.PI);ctx.quadraticCurveTo(-80,0,0,-110);ctx.fill();stroke(7);ctx.stroke();}
+function bin(t,fire){ctx.fillStyle='#8f8a80';ctx.beginPath();ctx.moveTo(-120,-120);ctx.lineTo(120,-120);ctx.lineTo(95,170);ctx.lineTo(-95,170);ctx.closePath();ctx.fill();stroke(8);ctx.stroke();ctx.fillRect(-140,-150,280,30);ctx.strokeRect(-140,-150,280,30);
+  stroke(5,'rgba(31,29,26,.5)');for(const x of[-50,0,50]){ctx.beginPath();ctx.moveTo(x,-90);ctx.lineTo(x*.8,140);ctx.stroke();}
+  if(fire){for(let i=0;i<3;i++){ctx.save();ctx.translate(-60+i*60,-170-Math.abs(Math.sin(t*6+i))*20);ctx.scale(.55+.1*Math.sin(t*9+i),.6);flame();ctx.restore();}}}
+function shop(){ctx.fillStyle='#e9e2cf';rr(ctx,-150,-110,300,240,10);ctx.fill();stroke(8);rr(ctx,-150,-110,300,240,10);ctx.stroke();
+  for(let i=0;i<6;i++){ctx.fillStyle=i%2?RED:'#fffdf5';ctx.beginPath();ctx.moveTo(-160+i*53,-110);ctx.lineTo(-160+(i+1)*53,-110);ctx.lineTo(-160+(i+1)*53,-60);ctx.quadraticCurveTo(-160+(i+.5)*53,-30,-160+i*53,-60);ctx.fill();}stroke(6);ctx.strokeRect(-160,-110,320,50);
+  ctx.fillStyle='#bfe3ff';rr(ctx,-110,-20,120,120,6);ctx.fill();stroke(5);rr(ctx,-110,-20,120,120,6);ctx.stroke();ctx.fillStyle='#8a6a4a';rr(ctx,40,-10,70,140,6);ctx.fill();ctx.stroke();}
+function scaleBar(p,col,label){ctx.fillStyle='#fffdf5';rr(ctx,-60,-260,120,520,20);ctx.fill();stroke(7);rr(ctx,-60,-260,120,520,20);ctx.stroke();ctx.fillStyle=col;const h=500*p;rr(ctx,-50,250-h,100,h,14);ctx.fill();hand(label,0,320,48);}
+
+const scenes={
+  hook:{draw(t){paper(t);
+    at(220,720,popAt(t,0,.25),1,()=>vape(t,true));mist(t,220,400,.9);
+    at(560,330,popAt(t,0,.25),2,()=>{ctx.fillStyle='#fffdf5';rr(ctx,-280,-110,560,220,36);ctx.fill();stroke(7);rr(ctx,-280,-110,560,220,36);ctx.stroke();hand('„Ist doch nur',0,-30,62);hand('Wasserdampf.“',0,40,62);});
+    if(S.no!=null){at(560,330,popAt(t,S.no,.25),3,()=>cross(170));at(560,700,popAt(t,S.no+.1,.3),4,()=>stamp('FALSCH'));}}},
+  parts:{draw(t){paper(t);
+    [[battery,160,'Akku',GREEN,S.p0],[g=>coil(t,false),450,'Heizdraht',ORANGE,S.p1],[bottle,740,'Liquid',PURPLE,S.p2]].forEach(([f,x,n,c,t0],i)=>{if(t0==null)return;at(x,520,popAt(t,t0),i+1,()=>f());at(x,780,popAt(t,t0+.15),10+i,()=>label(n,'#fffdf5'));});}},
+  heat:{draw(t){paper(t);at(450,760,popAt(t,.05,.5),1,()=>{ctx.scale(1.15,1.15);vape(t,S.hot!=null);});
+    if(S.hot!=null)at(450,640,1,2,()=>coil(t,true));if(S.fog!=null)mist(t,450,380,1);
+    if(S.fog!=null)at(680,300,popAt(t,S.fog),3,()=>{ctx.rotate(-.06);marker(-110,-34,220,68);hand('Nebel',0,0,58);});}},
+  notfire:{draw(t){paper(t);
+    at(250,500,popAt(t,.05),1,()=>{flame();cross(110);});hand('nichts brennt',250,700,56);
+    if(S.water!=null){at(650,500,popAt(t,S.water),2,()=>{drop();cross(110);});hand('kein Wasser',650,700,56);}}},
+  liquid:{draw(t){paper(t);at(450,600,popAt(t,.05,.5),1,()=>{ctx.scale(1.3,1.3);bottle();});
+    [['Propylenglykol',190,250,'#fffdf5'],['Glycerin',700,330,'#fffdf5'],['Aromen',200,900,'#fffdf5'],['NIKOTIN',680,900,'#ffd0d4']].forEach(([n,x,y,c],i)=>{const t0=S['i'+i];if(t0!=null)at(x,y,popAt(t,t0),5+i,()=>label(n,c));});}},
+  addict:{draw(t){paper(t);at(450,560,popAt(t,.05,.5),1,()=>{ctx.scale(2.6,2.6);padlock(RED,0);});
+    stroke(12,'#8f8a80');for(let i=0;i<5;i++){const x=150+i*150;ctx.beginPath();ctx.ellipse(x,850,50,28,i%2?0:Math.PI/2,0,7);ctx.stroke();}}},
+  compare:{draw(t){paper(t);
+    at(270,560,popAt(t,.05),1,()=>scaleBar(Math.min(1,(t-.05)*1.2),RED,'Zigarette'));
+    at(630,560,popAt(t,.2),2,()=>scaleBar(Math.min(.45,(t-.2)*.6),ORANGE,'Vape'));
+    if(S.harm!=null)at(450,250,popAt(t,S.harm,.3),3,()=>stamp('HARMLOS? NEIN',RED,58));}},
+  age:{draw(t){paper(t);at(450,540,popAt(t,.05,.5),1,()=>{ctx.fillStyle=RED;ctx.beginPath();ctx.arc(0,0,220,0,7);ctx.fill();stroke(12);ctx.stroke();bold('18+',0,10,190,'#fff');});
+    if(S.free!=null)at(450,880,popAt(t,S.free),2,()=>{ctx.rotate(-.04);marker(-260,-38,520,76);hand('auch ohne Nikotin',0,0,60);});}},
+  trash:{draw(t){paper(t);at(280,640,popAt(t,.05,.5),1,()=>bin(t,S.fire!=null));
+    at(280,420,popAt(t,.2),2,()=>{ctx.rotate(.5);ctx.scale(.35,.35);vape(t,false);});
+    if(S.fire!=null)at(280,380,popAt(t,S.fire,.3),3,()=>stamp('BRAND!',RED,56));
+    if(S.back!=null){at(680,620,popAt(t,S.back,.5),4,()=>shop());dash([380,520],[520,380],[620,500],GREEN);hand('zurückgeben',680,840,58,GREEN);at(260,640,popAt(t,S.back),5,()=>cross(170));}}},
+  end:{draw(t){paper(t);at(450,560,popAt(t,.05,.5),1,()=>{ctx.scale(1.2,1.2);drop();cross(120);});}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('hook');hud(false);sfx('pop',.6);
+  const tag=card(`<span class="ln pill">FÜR DUMMIES</span>`,{top:'4%'});
+  await capAt('„Ist doch nur #Wasserdampf.“ *Falsch.*',4,()=>{S.no=now();sfx('hit',.8);});
+  out(tag);go('parts');
+  await capAt('Eine Vape hat drei Teile: Akku, Heizdraht und *Liquid.*',5,()=>{S.p0=now();sfx('pop',.6);setTimeout(()=>{S.p1=now();sfx('pop',.6);},450);setTimeout(()=>{S.p2=now();sfx('pop',.6);},900);});
+  go('heat');sfx('whoosh',.3);
+  await capAt('Beim Ziehen heizt der Akku den Draht. Das Liquid wird zu #Nebel.',3,()=>{S.hot=now();sfx('buzz',.25);setTimeout(()=>{S.fog=now();sfx('whoosh',.4);},1300);});
+  go('notfire');sfx('pop',.6);
+  await capAt('Nichts brennt. Aber es ist auch kein *Wasser.*',2,()=>{S.water=now();sfx('pop',.6);});
+  go('liquid');sfx('pop',.5);
+  await capAt('Im Liquid: Propylenglykol, Glycerin, Aromen. Und meistens #Nikotin.',2,()=>{[0,1,2].forEach(i=>setTimeout(()=>{S['i'+i]=now();sfx('pop',.5);},i*700));setTimeout(()=>{S.i3=now();sfx('hit',.6);},2700);});
+  go('addict');sfx('click',.6);
+  await cap('Nikotin macht stark #abhängig.');
+  go('compare');
+  await capAt('Weniger schädlich als Zigaretten? *Ja.* Harmlos? #Nein.',5,()=>{S.harm=now();sfx('hit',.7);});
+  go('age');sfx('ding',.5);
+  await capAt('Kaufen darfst du sie erst ab #18. Auch ohne Nikotin.',6,()=>{S.free=now();sfx('scribble',.4);});
+  go('trash');sfx('pop',.5);
+  await capAt('Und Einweg-Vapes nie in den Müll: Der Akku kann #brennen.',8,()=>{S.fire=now();sfx('fire',.6);});
+  await capAt('Läden, die Vapes verkaufen, nehmen sie *zurück.*',0,()=>{S.back=now();sfx('ding',.5);});
+  go('end');sfx('pop',.6);
+  dimT=.2;await cap('Wusstest du, dass es kein Wasserdampf ist? Ja oder *nein?*',{big:1});
+  dimT=.35;outro('FÜR DUMMIES','MEHR <span class="hl">DUMMIES</span>','JA ODER NEIN? 👇');
+  await sleep(3800);finish();
+}
+boot('hook');
+</script>
+</body>
+</html>
