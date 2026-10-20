@@ -102,7 +102,7 @@ async function story(){
   await capWords('Das Schlaflied wird leiser. Und #leiser.',i=>{S.level=Math.max(1,3-Math.floor(i/2));if(i===0)sfx('whisper',.6);if(i===4)sfx('whisper',.3);});
   go('hide');S.hidden=true;S.level=0;clock('23:22','SCHRANK');bed('wind',.12);bed('heart',.55);
   await capAt('Es wollte nie zu dir. Es wollte nur, dass du #unten bleibst.',9,()=>sfx('hit',.8),{big:1});
-  dimT=.35;const q=question(),ab=choice('🏃 DU RENNST HOCH','🌙 DU RENNST RAUS UNTERS FENSTER');
+  dimT=.35;const q=question(),ab=choice('🏃 DU RENNST HOCH','🌙 DU RENNST RAUS');
   await cap('Rennst du *hoch* ins Kinderzimmer? Oder #raus unters Fenster?',{big:1});
   await sleep(2000);out(q);out(ab);dimT=.75;hud(false);
   outro('AUFLÖSUNG IN PART 3','PART <span class="hl">3</span>','KOMMENTIERE <span class="hl">A</span> ODER <span class="red">B</span> 👇');
