@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Monster-Casting</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@600;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#05060b}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="cv" width="1080" height="4560"></canvas>
+<script>const ctx=document.getElementById('cv').getContext('2d');</script>
+<script src="../engine/monster.js"></script>
+<script>
+// Übersicht aller 10 Entwürfe zum Auswählen (Aufruf mit ?t=Sekunden für einen bestimmten Moment)
+const LIST=[
+  ['treppenlicht','DER TREPPENLICHT-MANN','Kommt, wenn das Licht im','Treppenhaus ausgeht.','255,154,46'],
+  ['sprachnachricht','DIE SPRACHNACHRICHT','Schickt dir Sprachnachrichten –','mit deiner eigenen Stimme.','62,232,181'],
+  ['schaf','DAS 100. SCHAF','Du zählst Schafe zum Einschlafen.','Das hundertste ist keins.','255,77,109'],
+  ['spion','DER SPION','Steht um 3:33 vor deiner Tür.','Schau nie durch den Türspion.','111,183,255'],
+  ['rueckwaerts','DIE RÜCKWÄRTSFRAU','Läuft rückwärts auf dich zu','und fragt nach der Uhrzeit.','195,155,255'],
+  ['absender','DER ABSENDER','Paket für dich. Absender: du.','Unterschreib niemals.','224,160,80'],
+  ['punkt','DER PUNKT','Der Standort deiner besten Freundin','ist… in deinem Zimmer.','61,139,255'],
+  ['linie0','LINIE 0','Ein Nachtbus, der in keinem Fahrplan','steht. Steig nie an der Endstation aus.','255,224,102'],
+  ['fensterputzer','DER FENSTERPUTZER','Er klopft an dein Fenster.','Du wohnst im 9. Stock.','127,240,255'],
+  ['mitbewohner','DER 5. MITBEWOHNER','Steht auf eurem WG-Putzplan.','Ihr seid nur zu viert.','255,210,63'],
+];
+function draw(t){ctx.fillStyle='#05060b';ctx.fillRect(0,0,1080,4560);
+  ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='700 86px Oswald, sans-serif';ctx.fillText('MONSTER-CASTING',540,120);
+  ctx.fillStyle='#c8ff3e';ctx.font='900 34px Montserrat, sans-serif';ctx.fillText('WELCHES BEKOMMT DIE NEUE SERIE?',540,180);
+  LIST.forEach(([fn,name,l1,l2,col],i)=>{const x=(i%2)*540+12,y=230+Math.floor(i/2)*866,w=516,h=850;
+    ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,28);ctx.clip();
+    const g=ctx.createLinearGradient(0,y,0,y+h);g.addColorStop(0,'#0d1020');g.addColorStop(1,'#04050a');ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
+    mGlow(x+w/2,y+380,330,col,.22);ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(x,y+640,w,6);
+    ctx.save();ctx.translate(x+w/2,y+640);ctx.scale(.8,.8);MONSTER[fn](t+i*.7);ctx.restore();
+    const v=ctx.createLinearGradient(0,y+560,0,y+h);v.addColorStop(0,'rgba(4,5,10,0)');v.addColorStop(.35,'rgba(4,5,10,.92)');ctx.fillStyle=v;ctx.fillRect(x,y+560,w,h-560);
+    ctx.fillStyle=`rgb(${col})`;ctx.beginPath();ctx.arc(x+58,y+58,38,0,7);ctx.fill();ctx.fillStyle='#07080f';ctx.font='900 40px Montserrat, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(i+1,x+58,y+60);
+    ctx.textBaseline='alphabetic';ctx.fillStyle='#fff';let fs=56;do{ctx.font=`700 ${fs}px Oswald, sans-serif`;fs-=2;}while(ctx.measureText(name).width>w-50);ctx.fillText(name,x+w/2,y+722);
+    ctx.fillStyle=`rgb(${col})`;ctx.font='700 25px Montserrat, sans-serif';ctx.fillText(l1,x+w/2,y+772);ctx.fillText(l2,x+w/2,y+808);
+    ctx.restore();ctx.strokeStyle=`rgba(${col},.55)`;ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(x,y,w,h,28);ctx.stroke();});}
+document.fonts.ready.then(()=>{draw(+(new URLSearchParams(location.search).get('t')||1.3));window.READY=true;});
+</script>
+</body>
+</html>
