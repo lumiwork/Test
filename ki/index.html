@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KI für Dummies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@600;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i></div><div id="clock"></div><div id="loc"></div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">KI · FÜR DUMMIES</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script src="../engine/papier.js"></script>
+<script>
+// Stark vereinfacht, aber korrekt: Sprachmodelle lernen aus viel Text Muster und erzeugen Antworten Wortstück für Wortstück
+// nach Wahrscheinlichkeit; dadurch können sie Falsches erfinden („halluzinieren“). Bild-KIs (Diffusion) entrauschen schrittweise.
+// Die Prozentzahlen im Video sind ein ausgedachtes Beispiel und als solches beschriftet.
+// ---------- Bausteine ----------
+const PURPLE='#8f6bff',ORANGE='#ff8a3d';
+function stamp(txt,col=RED,size=70){ctx.rotate(-.16);ctx.font=`900 ${size}px Montserrat, sans-serif`;const w=ctx.measureText(txt).width+50;stroke(10,col);rr(ctx,-w/2,-size*.75,w,size*1.5,14);ctx.stroke();bold(txt,0,4,size,col);}
+function robot(t,o={}){const b=Math.sin(t*2)*6;ctx.save();ctx.translate(0,b);
+  stroke(8);ctx.beginPath();ctx.moveTo(0,-170);ctx.lineTo(0,-210);ctx.stroke();ctx.fillStyle=o.blink&&Math.sin(t*9)>0?RED:YEL;ctx.beginPath();ctx.arc(0,-220,16,0,7);ctx.fill();stroke(6);ctx.stroke();
+  ctx.fillStyle='#bfe3ff';rr(ctx,-140,-170,280,220,40);ctx.fill();stroke(8);rr(ctx,-140,-170,280,220,40);ctx.stroke();
+  ctx.fillStyle='#2b2926';rr(ctx,-110,-140,220,130,26);ctx.fill();const e=((t*.4)%1)>.94?.15:1;ctx.fillStyle=GREEN;rr(ctx,-70,-100,40,40*e,10);ctx.fill();rr(ctx,30,-100,40,40*e,10);ctx.fill();
+  stroke(6,GREEN);ctx.beginPath();ctx.arc(0,-50,30,.2,Math.PI-.2);ctx.stroke();
+  ctx.fillStyle='#d9d3c4';rr(ctx,-110,60,220,170,30);ctx.fill();stroke(8);rr(ctx,-110,60,220,170,30);ctx.stroke();
+  for(const s of[-1,1]){stroke(18,'#bcb5a4');ctx.beginPath();ctx.moveTo(s*110,90);ctx.lineTo(s*170,o.wave&&s>0?-10+Math.sin(t*8)*20:170);ctx.stroke();}
+  if(o.calc){ctx.fillStyle='#fffdf5';rr(ctx,-60,100,120,100,10);ctx.fill();stroke(5);rr(ctx,-60,100,120,100,10);ctx.stroke();bold('%',0,152,60,RED);}ctx.restore();}
+function chatWin(t,lines,typed){ctx.fillStyle='#fbfaf5';rr(ctx,-380,-260,760,520,30);ctx.fill();stroke(8);rr(ctx,-380,-260,760,520,30);ctx.stroke();ctx.fillStyle='#d9d3c4';rr(ctx,-380,-260,760,70,30);ctx.fill();ctx.fillRect(-380,-220,760,30);
+  bold('KI-Chat',0,-225,34);stroke(4);ctx.beginPath();ctx.moveTo(-380,-190);ctx.lineTo(380,-190);ctx.stroke();
+  ctx.fillStyle='#dcf8c6';rr(ctx,60,-160,290,70,20);ctx.fill();stroke(4);rr(ctx,60,-160,290,70,20);ctx.stroke();hand('Erklär mir KI!',205,-125,40);
+  ctx.fillStyle='#e8f0ff';rr(ctx,-350,-60,560,280,20);ctx.fill();stroke(4);rr(ctx,-350,-60,560,280,20);ctx.stroke();
+  const words=lines.join(' ').split(' '),n=Math.min(words.length,Math.floor(typed));let x=-325,y=-10;ctx.font='700 38px Montserrat, sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle=INK;
+  for(let i=0;i<n;i++){const w=words[i]+' ',ww=ctx.measureText(w).width;if(x+ww>190){x=-325;y+=56;}ctx.fillText(w,x,y);x+=ww;}if(Math.sin(t*10)>0){ctx.fillRect(x,y-22,6,44);}}
+function dice(t,r=0){ctx.save();ctx.rotate(r);ctx.fillStyle='#fffdf5';rr(ctx,-55,-55,110,110,18);ctx.fill();stroke(7);rr(ctx,-55,-55,110,110,18);ctx.stroke();ctx.fillStyle=INK;for(const[x,y]of[[-28,-28],[28,28],[0,0],[28,-28],[-28,28]]){ctx.beginPath();ctx.arc(x,y,10,0,7);ctx.fill();}ctx.restore();}
+function book(col,txt){ctx.fillStyle=col;rr(ctx,-60,-80,120,160,8);ctx.fill();stroke(6);rr(ctx,-60,-80,120,160,8);ctx.stroke();ctx.fillStyle='#fffdf5';ctx.fillRect(-40,-50,80,26);stroke(3);ctx.strokeRect(-40,-50,80,26);bold(txt,0,-37,18,INK);}
+function webPage(){ctx.fillStyle='#fbfaf5';rr(ctx,-80,-60,160,120,10);ctx.fill();stroke(5);rr(ctx,-80,-60,160,120,10);ctx.stroke();ctx.fillStyle='#d9d3c4';ctx.fillRect(-80,-60,160,22);stroke(3);for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(-60,-20+i*20);ctx.lineTo(i%2?30:60,-20+i*20);ctx.stroke();}}
+function probBar(word,p,col,y,shown){if(!shown)return;hand(word,-230,y,52,INK,'left');ctx.fillStyle='#fff';rr(ctx,-10,y-24,300,48,24);ctx.fill();ctx.fillStyle=col;rr(ctx,-10,y-24,Math.max(48,300*p),48,24);ctx.fill();stroke(5);rr(ctx,-10,y-24,300,48,24);ctx.stroke();bold(Math.round(p*100)+' %',320,y+2,36,INK,'left');}
+function noiseImg(t,p){const S0=360;ctx.save();ctx.translate(-S0/2,-S0/2);ctx.fillStyle='#fffdf5';ctx.fillRect(0,0,S0,S0);
+  // fertiges Bild: Haus mit Sonne
+  ctx.globalAlpha=p;ctx.fillStyle='#bfe3ff';ctx.fillRect(0,0,S0,S0);ctx.fillStyle=YEL;ctx.beginPath();ctx.arc(280,80,40,0,7);ctx.fill();ctx.fillStyle='#7fd99b';ctx.fillRect(0,270,S0,90);
+  ctx.fillStyle=RED;ctx.beginPath();ctx.moveTo(90,180);ctx.lineTo(180,100);ctx.lineTo(270,180);ctx.fill();ctx.fillStyle='#fffdf5';ctx.fillRect(110,180,140,100);ctx.fillStyle='#8a6a4a';ctx.fillRect(160,220,40,60);ctx.globalAlpha=1;
+  const k=Math.floor(t*12);for(let i=0;i<900*(1-p);i++){const x=((i*97+k*31)%S0),y=((i*53+k*17+i*i)%S0);ctx.fillStyle=['#4a4540','#bcb5a4','#8f8a80','#fff'][i%4];ctx.fillRect(x,y,12,12);}
+  ctx.restore();stroke(8);ctx.strokeRect(-S0/2,-S0/2,S0,S0);}
+
+const scenes={
+  hook:{draw(t){paper(t);at(450,470,popAt(t,0,.25),1,()=>chatWin(t,['Künstliche','Intelligenz','ist','ein','Computerprogramm,','das','aus','Daten','lernt…'],t*4.5));
+    if(S.dice!=null){at(220,880,popAt(t,S.dice,.3),2,()=>dice(t,Math.sin(t*6)*.5));at(680,880,popAt(t,S.dice+.15,.3),3,()=>dice(t,Math.cos(t*5)*.5+1));at(450,880,popAt(t,S.dice+.3,.3),4,()=>stamp('GERATEN',RED,64));}}},
+  title:{draw(t){paper(t);at(450,520,popAt(t,.05,.5),1,()=>robot(t,{blink:1}));at(450,880,popAt(t,.4),2,()=>{ctx.rotate(-.05);marker(-230,-40,460,80);hand('KI für Dummies',0,0,72,RED);});}},
+  read:{draw(t){paper(t);at(450,700,popAt(t,.05,.5),1,()=>{ctx.scale(.85,.85);robot(t);});
+    const items=[[book,BLUE,'BUCH'],[webPage],[book,RED,'LEXIKON'],[webPage],[book,GREEN,'ROMAN'],[webPage]];
+    items.forEach((it,i)=>{const p=((t*.45+i/items.length)%1),x=150+((i*173)%600)+(450-150-((i*173)%600))*p,y=120+p*420;ctx.globalAlpha=Math.min(1,(1-p)*3);at(x,y,(1-p*.6)*.8,10+i,()=>it[0](it[1],it[2]));ctx.globalAlpha=1;});
+    if(S.forum!=null)at(450,1000,popAt(t,S.forum),20,()=>{ctx.rotate(-.04);marker(-280,-36,560,72);hand('Milliarden Wörter',0,0,58);});}},
+  pattern:{draw(t){paper(t);const ws=[['Guten',BLUE],['Morgen',GREEN],['!',YEL]];ws.forEach(([w,c],i)=>{if(t<.2+i*.5)return;at(170+i*280,420,popAt(t,.2+i*.5),i+1,()=>{ctx.fillStyle=c;rr(ctx,-120,-55,240,110,20);ctx.fill();stroke(7);rr(ctx,-120,-55,240,110,20);ctx.stroke();bold(w,0,4,46,INK);});
+      if(i&&t>.4+i*.5){stroke(8);ctx.beginPath();ctx.moveTo(170+(i-1)*280+125,420);ctx.lineTo(170+i*280-130,420);ctx.stroke();}});
+    if(t>1.8)at(450,700,popAt(t,1.8),5,()=>hand('folgt sehr oft aufeinander',0,0,56));}},
+  follow:{draw(t){paper(t);at(450,620,popAt(t,.05,.5),1,()=>robot(t,{wave:1}));}},
+  predict:{draw(t){paper(t);at(450,200,popAt(t,.05),1,()=>{ctx.fillStyle='#dcf8c6';rr(ctx,-330,-55,660,110,24);ctx.fill();stroke(6);rr(ctx,-330,-55,660,110,24);ctx.stroke();hand('„Das Wetter ist heute …“',0,0,56);});
+    const p=S.bars!=null?Math.min(1,(t-S.bars)/.9):0;at(450,520,1,2,()=>{probBar('sonnig',.62*p,GREEN,-120,S.bars!=null);probBar('regnerisch',.31*p,BLUE,0,S.bars!=null);probBar('Banane',.01*p+.002,RED,120,S.bars!=null);});
+    if(S.bars!=null)at(450,820,popAt(t,S.bars+.3),3,()=>hand('(ausgedachtes Beispiel)',0,0,40,'#6b6253'));
+    if(S.best!=null)at(220,400,popAt(t,S.best,.3),4,()=>{stroke(10,GREEN);ctx.beginPath();ctx.ellipse(0,0,180,60,0,0,7);ctx.stroke();});}},
+  write:{draw(t){paper(t);at(450,560,1,1,()=>chatWin(t,['Das','Wetter','ist','heute','sonnig','und','warm.'],S.w0!=null?(t-S.w0)*3.2:0));}},
+  calc:{draw(t){paper(t);at(450,620,popAt(t,.05,.5),1,()=>robot(t,{calc:1}));at(200,300,popAt(t,.3),2,()=>{ctx.fillStyle='#f2d7b0';ctx.beginPath();ctx.ellipse(0,0,90,70,0,0,7);ctx.fill();stroke(6);ctx.stroke();stroke(14,RED);ctx.beginPath();ctx.moveTo(-90,-70);ctx.lineTo(90,70);ctx.stroke();});hand('kein Wissen',200,420,46);
+    if(S.prob!=null)at(690,300,popAt(t,S.prob),3,()=>{bold('62 %',0,0,80,GREEN);hand('Wahrscheinlichkeit',0,70,40);});}},
+  halluc:{draw(t){paper(t);at(260,700,popAt(t,.05,.5),1,()=>{ctx.scale(.75,.75);robot(t);});
+    at(560,330,popAt(t,.3,.4),2,()=>{ctx.fillStyle='#fffdf5';rr(ctx,-280,-90,560,180,28);ctx.fill();stroke(7);rr(ctx,-280,-90,560,180,28);ctx.stroke();hand('„Der Eiffelturm',0,-30,52);hand('steht in Rom.“',0,34,52);});
+    if(S.fake!=null)at(560,560,popAt(t,S.fake,.3),3,()=>stamp('ERFUNDEN',RED,64));}},
+  image:{draw(t){paper(t);const p=S.img!=null?Math.min(1,(t-S.img)/2.4):0;at(450,520,popAt(t,.05,.5),1,()=>noiseImg(t,p));hand(p<.5?'Rauschen …':'… fertiges Bild',450,800,60,p<.5?'#6b6253':GREEN);}},
+  tips:{draw(t){paper(t);at(250,480,popAt(t,.05,.5),1,()=>{stroke(16);ctx.beginPath();ctx.moveTo(60,60);ctx.lineTo(150,150);ctx.stroke();ctx.fillStyle='rgba(191,227,255,.5)';ctx.beginPath();ctx.arc(0,0,90,0,7);ctx.fill();stroke(12);ctx.stroke();});hand('prüfen',250,680,60);
+    if(S.pw!=null){at(650,470,popAt(t,S.pw),2,()=>{ctx.scale(2.2,2.2);padlock(YEL,0);});hand('kein Passwort',650,680,56,RED);}}},
+  end:{draw(t){paper(t);at(450,560,popAt(t,.05,.5),1,()=>robot(t,{blink:1}));}},
+};
+
+// ---------- Ablauf ----------
+async function story(){
+  go('hook');hud(false);sfx('pop',.6);sfx('click',.4);
+  await capAt('Diese Antwort hat kein Mensch geschrieben. Sie wurde Wort für Wort #geraten.',9,()=>{S.dice=now();sfx('hit',.7);},{big:1});
+  go('title');sfx('pop',.6);
+  await cap('KI für *Dummies:* Wie funktionieren ChatGPT und Co?');
+  go('read');sfx('whoosh',.4);
+  await capAt('Erst liest die KI unfassbar viel Text. Bücher, Webseiten, #Foren.',6,()=>{S.forum=now();sfx('scribble',.4);});
+  go('pattern');sfx('pop',.5);
+  await cap('Daraus lernt sie Muster: Welches Wort folgt meistens auf *welches?*');
+  go('follow');followNudge('FOLG FÜR MEHR DUMMIES');
+  await cap('Kurz: Folg mir. Jetzt wird es *spannend.*');
+  go('predict');sfx('pop',.5);
+  await capAt('Du fragst etwas. Die KI rechnet: Welches Wort passt am *besten?*',4,()=>{S.bars=now();sfx('whoosh',.4);setTimeout(()=>{S.best=now();sfx('ding',.5);},1600);});
+  go('write');
+  await capWords('Sie schreibt es hin. Dann das nächste. Und das #nächste.',i=>{if(i===0)S.w0=now();sfx('click',.4);});
+  go('calc');sfx('pop',.5);
+  await capAt('Sie weiß also nichts wie ein Mensch. Sie rechnet mit *Wahrscheinlichkeiten.*',8,()=>{S.prob=now();sfx('ding',.5);});
+  go('halluc');sfx('pop',.5);
+  await capAt('Deshalb erfindet sie manchmal falsche Dinge. Das nennt man #Halluzinieren.',4,()=>{S.fake=now();sfx('hit',.7);});
+  go('image');sfx('static',.3);
+  await capAt('Bild-KIs machen aus Rauschen Schritt für Schritt ein *Bild.*',0,()=>{S.img=now();});
+  go('tips');sfx('pop',.6);
+  await capAt('Merke: Wichtige Fakten immer prüfen. Und keine Passwörter #eintippen.',5,()=>{S.pw=now();sfx('click',.6);});
+  go('end');sfx('pop',.6);
+  dimT=.2;await cap('Nutzt du KI für Schule oder Arbeit? Ja oder *nein?*',{big:1});
+  dimT=.35;outro('KI FÜR DUMMIES','MEHR <span class="hl">DUMMIES</span>','JA ODER NEIN? 👇');
+  await sleep(3800);finish();
+}
+boot('hook');
+</script>
+</body>
+</html>
