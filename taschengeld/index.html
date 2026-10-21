@@ -89,30 +89,36 @@ const scenes={
 };
 
 // ---------- Ablauf ----------
-// Ein Alter: Jahreszahl springt rein, Betrag rattert hoch, ka-ching + Münzregen
-async function reveal(i,{first=false,roll=.7}={}){
-  if(!first){S.ai=i;S.ta=now();sfx('whoosh',.35);await sleep(250);}
-  S.from=i?AMT[i-1]:0;S.tr=now();S.rd=roll;S.tk=null;sfx('coinroll',.7);if(roll>.9)setTimeout(()=>sfx('coinroll',.8),700);
-  await sleep(roll*1000);S.tk=now();sfx('kaching',.9);spawnBurst(now(),i===10?70:10+i*3);
-  if(i===10){sfx('hit',.9);S.flash=now();}}
-async function step(i,gag,ms=2400,o={}){await Promise.all([reveal(i,o),(async()=>{await sleep(o.capDelay??300);await cap(gag,o.cap||{});})(),sleep(ms)]);}
+// Eine Sprecherzeile pro Alter: Jahreszahl springt rein, der Betrag rattert ab Wort `from` hoch
+// und steht genau dann, wenn er gesprochen wird (Wort `idx`): ka-ching + Münzregen
+async function ageLine(i,text,idx,{from=0,first=false,o={}}={}){
+  const L=window.VOICE&&VOICE.lines[VOICE.i],wt=k=>L?L.w[k]:.05+k*.33,t0=now();
+  const ts=wt(from)+(first?0:.15),te=Math.max(ts+.45,wt(idx));
+  // bis zum Start steht noch der alte Betrag da (beim ersten Mal „?? €“)
+  const arm=()=>{S.from=i?AMT[i-1]:0;S.tr=t0+ts;S.rd=te-ts;S.tk=null;};
+  if(!first){S.ai=i;S.ta=t0;sfx('whoosh',.3);arm();}
+  setTimeout(()=>{if(first)arm();sfx('coinroll',.6);if(te-ts>1)setTimeout(()=>sfx('coinroll',.7),700);},ts*1000);
+  setTimeout(()=>{S.tk=now();sfx('kaching',.9);spawnBurst(now(),i===10?70:10+i*3);if(i===10){sfx('hit',.9);S.flash=now();}},te*1000);
+  await cap(text,o);}
 
 async function story(){
-  go('table');S.ai=0;hud(false);bed('beat',.5);
-  await Promise.all([cap('Ab *8* hast du so viel:',{big:1}),(async()=>{await sleep(1100);await reveal(0,{first:true});})(),sleep(3000)]);
-  await step(1,'Plus Bonus fürs *Zähneputzen.*');
-  await step(2,'Eigene Karte. Eigene #Regeln.');
-  await step(3,'Jeder Skin. *Sofort.*');
-  await step(4,'Döner für die ganze *Klasse.*');
+  go('table');S.ai=0;hud(false);bed('beat',.4);
+  await ageLine(0,'Ab *8* Jahren hast du so viel #Taschengeld: ~47 Euro!',8,{from:7,first:true,o:{big:1}});
+  await ageLine(1,'Mit 9: ~68 Euro. Plus Bonus fürs *Zähneputzen.*',2);
+  await ageLine(2,'Mit 10: ~93 Euro. Eigene Karte, eigene #Regeln.',2);
+  await ageLine(3,'Mit 11: ~124 Euro. Jeder Skin, *sofort.*',2);
+  await ageLine(4,'Mit 12: ~158 Euro. Döner für die ganze *Klasse.*',2);
   S.nud=now();followNudge('FOLG FÜR MEHR',2600);
-  await step(5,'Jetzt wird es #ernst.');
-  await step(6,'Taxi statt *Fahrrad.*');
-  await step(7,'Eigener ~Friseur.');
-  await step(8,'Du brauchst einen #Steuerberater.');
-  await step(9,'Mama fragt DICH nach *Geld.*');
-  await step(10,'Rente mit *19.*',3900,{roll:1.6,capDelay:1900,cap:{big:1}});
+  await cap('Folg mir. Es wird noch #absurder.');
+  await ageLine(5,'Mit 13: ~205 Euro. Jetzt wird es #ernst.',2);
+  await ageLine(6,'Mit 14: ~267 Euro. Taxi statt *Fahrrad.*',2);
+  await ageLine(7,'Mit 15: ~341 Euro. Eigener *Friseur.*',2);
+  await ageLine(8,'Mit 16: ~438 Euro. Du brauchst einen #Steuerberater.',2);
+  await ageLine(9,'Mit 17: ~589 Euro. Mama fragt dich nach *Geld.*',2);
+  await ageLine(10,'Und mit 18: ~1.247 Euro. Rente mit *19.*',3,{from:1,o:{big:1}});
+  await sleep(300);
   S.q=now();dimT=.3;const c=choice('MEHR 🤑','WENIGER 💀','30%');sfx('pop',.6);
-  await cap('Und du? Mehr oder #weniger?',{big:1,top:'70%'});await sleep(600);
+  await cap('Und du? Kriegst du mehr oder #weniger?',{big:1,top:'70%'});await sleep(600);
   await out(c);dimT=.5;
   outro('TASCHENGELD','MEHR <span class="hl">LISTEN</span>','WIE VIEL KRIEGST DU? 👇');sfx('kaching',.6);
   await sleep(3600);finish();
