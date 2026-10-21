@@ -20,9 +20,35 @@ def norm(w):
     return ZAHLEN.get(w, w)
 
 
+def zahlwort(n):
+    """Zahl als deutsches Wort – nur für die Sprechlänge (\"47\" dauert so lang wie \"siebenundvierzig\")."""
+    einer = ["null", "ein", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf",
+             "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"]
+    zehner = ["", "", "zwanzig", "dreißig", "vierzig", "fünfzig", "sechzig", "siebzig", "achtzig", "neunzig"]
+
+    def bis100(k):
+        z, e = divmod(k, 10)
+        return einer[k] if k < 20 else (einer[e] + "und" if e else "") + zehner[z]
+
+    def bis1000(k):
+        h, r = divmod(k, 100)
+        return (einer[h] + "hundert" if h else "") + (bis100(r) if r else "")
+
+    if n < 1000:
+        return bis1000(n) or "null"
+    t, r = divmod(n, 1000)
+    return (bis1000(t) if t > 1 else "") + "tausend" + (bis1000(r) if r else "")
+
+
+def sprech(w):
+    """Buchstaben, wie sie gesprochen werden (Ziffern ausgeschrieben)."""
+    w = re.sub(r"[^\wäöüß]", "", w)
+    return zahlwort(int(w)) if w.isdigit() and len(w) < 7 else w
+
+
 def captions(n):
     html = Path(os.environ.get("SEITE", Path(__file__).parent / "index.html")).read_text(encoding="utf-8")
-    lines = re.findall(r"\b(?:cap(?:At|Words)?|feature)\('([^']*)'", html)[:n]
+    lines = re.findall(r"\b(?:cap(?:At|Words)?|feature|ageLine)\((?:\d+,)?'([^']*)'", html)[:n]
     return [[re.sub(r"[*#~]", "", w) for w in l.split()] for l in lines]
 
 
@@ -65,7 +91,7 @@ def from_pauses(audio, lines):
             i += 1
     runs = [(a * 0.05, b * 0.05) for a, b in runs if (b - a) * 0.05 >= 0.1]
     # Satzgrenzen per DP: Sprechdauer passt zur Buchstabenzahl, Grenzen liegen bevorzugt in langen Pausen
-    chars = [len(re.sub(r"[^\wäöüß]", "", "".join(l))) for l in lines]
+    chars = [sum(len(sprech(w)) for w in l) for l in lines]
     rate = sum(b - a for a, b in runs) / sum(chars)
     m, n = len(runs), len(lines)
     gap = [runs[k + 1][0] - runs[k][1] for k in range(m - 1)] + [0]
@@ -91,7 +117,7 @@ def from_pauses(audio, lines):
     out = []
     for l, g in zip(lines, groups):
         total = sum(b - a for a, b in g)
-        weights = [len(re.sub(r"[^\wäöüß]", "", w)) + 1 for w in l]
+        weights = [len(sprech(w)) + 1 for w in l]
         pos, w_starts = 0.0, []
         for wt in weights:  # Anteil an der reinen Sprechzeit -> echte Zeit (Pausen überspringen)
             t, acc = g[0][0], 0.0
@@ -102,6 +128,13 @@ def from_pauses(audio, lines):
                 acc += b - a
             w_starts.append(t)
             pos += wt / sum(weights)
+        # Nach Satzzeichen („Mit neun: achtundsechzig …“) beginnt das nächste Wort nach der Sprechpause
+        for k in range(1, len(l)):
+            if re.search(r"[.,:;!?…]$", l[k - 1]):
+                near = min((a for a, _ in g), key=lambda a: abs(a - w_starts[k]))
+                if abs(near - w_starts[k]) < 0.6:
+                    w_starts[k] = near
+            w_starts[k] = max(w_starts[k], w_starts[k - 1] + 0.08)
         s = g[0][0]
         out.append({"text": " ".join(l), "s": round(s, 3), "e": round(g[-1][1], 3), "w": [round(t - s, 3) for t in w_starts]})
     return out
