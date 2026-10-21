@@ -98,7 +98,8 @@ const run=(args)=>new Promise((res,rej)=>{const p=spawn('ffmpeg',args,{stdio:['i
   const inputs=['-i',VIDEO],chains=[];
   if(voiceWav&&sfxWav){ // Effekte leiser, sobald gesprochen wird (Stimme zweimal als eigene Eingabe statt asplit)
     inputs.push('-i',voiceWav,'-i',voiceWav,'-i',sfxWav);
-    chains.push(`[3:a][2:a]sidechaincompress=threshold=0.02:ratio=6:attack=20:release=400[sfxd]`,`[1:a][sfxd]amix=inputs=2:normalize=0:duration=longest[mix]`);
+    // apad: ohne Auffüllen endet sidechaincompress mit der Stimme und schneidet Effekte im Abspann ab
+    chains.push(`[2:a]apad[sc]`,`[3:a][sc]sidechaincompress=threshold=0.02:ratio=6:attack=20:release=400[sfxd]`,`[1:a][sfxd]amix=inputs=2:normalize=0:duration=longest[mix]`);
   }else{inputs.push('-i',voiceWav||sfxWav);chains.push(`[1:a]anull[mix]`);}
   chains.push(`[mix]alimiter=limit=0.89:level=false,aformat=channel_layouts=stereo,apad[aout]`);
   if(process.env.DUMP)fs.writeFileSync(process.env.DUMP,JSON.stringify({inputs,chains,dur},null,1)); // Ton-Mix zum Nachprüfen speichern
