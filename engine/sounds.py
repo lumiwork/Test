@@ -286,6 +286,82 @@ def scribble():
     x = band(rng.standard_normal(n), 2500, 8000) * am * env(n, 0.02, 0.3)
     return norm(x, -14)
 
+
+def bell(tt, partials, d):
+    """Metallischer Glockenton aus unharmonischen Teiltönen (f, Lautstärke, Abklingfaktor)."""
+    return sum(a * np.sin(2 * np.pi * f * tt) * np.exp(-tt / (d * k)) for f, a, k in partials)
+
+
+def coin():
+    """Münze klimpert: kurzer, heller Doppel-Ton."""
+    tt = t(0.25)
+    x = bell(tt, [(3950, 1, 1), (6100, .6, .6), (8300, .25, .4)], 0.06)
+    x[int(0.045 * SR):] += 0.6 * bell(tt[:len(tt) - int(0.045 * SR)], [(4400, 1, 1), (6800, .5, .6)], 0.05)
+    return norm(x * env(len(tt), 0.0005, 1e9), -9)
+
+
+def coinroll():
+    """Zähler rattert hoch: Münzklicks, immer schneller und etwas höher (0,75 s)."""
+    n = int(0.75 * SR)
+    x = np.zeros(n)
+    for i in range(12):
+        p = int(0.7 * (1 - (1 - i / 12) ** 1.6) * SR)
+        tt = t(0.08)
+        f = 3600 + i * 90
+        hit = bell(tt, [(f, 1, 1), (f * 1.55, .5, .6)], 0.025)
+        m = min(len(hit), n - p)
+        x[p:p + m] += hit[:m] * (0.6 + i * 0.03)
+    return norm(x, -12)
+
+
+def kaching():
+    """Registrierkasse: Schublade ratscht auf, dann klingelt die Glocke."""
+    n = int(1.4 * SR)
+    x = np.zeros(n)
+    for i in range(5):  # Ratsche
+        p, m = int(i * 0.022 * SR), int(0.02 * SR)
+        x[p:p + m] += band(rng.standard_normal(m), 1500, 8000) * env(m, 0.0005, 0.004) * (0.6 + 0.1 * i)
+    p = int(0.12 * SR)
+    tt = t(1.4)[:n - p]
+    x[p:] += bell(tt, [(2093, 1, 1), (2637, .8, .9), (4186, .4, .6), (5274, .25, .4)], 0.35)
+    x[p:] += 0.4 * band(rng.standard_normal(len(tt)), 3000, 9000) * env(len(tt), 0.001, 0.03)
+    return norm(x, -6)
+
+
+def beat():
+    """Lockerer Beat (128 BPM, 4 Takte) als Schleife unter Videos ohne Stimme."""
+    bpm, bars = 128, 4
+    st = 60 / bpm / 4  # Sechzehntel
+    n = int(round(st * 16 * bars * SR))
+    x = np.zeros(n)
+
+    def put(sig, step):
+        p = int(round(step * st * SR))
+        m = min(len(sig), n - p)
+        x[p:p + m] += sig[:m]
+
+    tk = t(0.35)
+    kick = np.sin(2 * np.pi * np.cumsum(45 + 110 * np.exp(-tk / 0.04)) / SR) * env(len(tk), 0.002, 0.12)
+    m = int(0.18 * SR)
+    clap = band(rng.standard_normal(m), 900, 6000) * env(m, 0.001, 0.05)
+    m = int(0.05 * SR)
+    hat = band(rng.standard_normal(m), 7000, None) * env(m, 0.0005, 0.012)
+    bass_notes = [43.65, 43.65, 51.91, 38.89]  # F1, F1, Ab1, Eb1
+    for b in range(bars):
+        o = b * 16
+        for s in (0, 7, 10):
+            put(kick, o + s)
+        for s in (4, 12):
+            put(0.55 * clap, o + s)
+        for s in range(0, 16, 2):
+            put((0.22 if s % 4 else 0.12) * hat, o + s + 1)
+        tb = t(st * 3)
+        f = bass_notes[b]
+        bass = (np.sin(2 * np.pi * f * tb) + 0.3 * np.sin(4 * np.pi * f * tb)) * env(len(tb), 0.005, 0.25)
+        for s in (0, 3, 6, 8, 11, 14):
+            put(0.5 * bass, o + s)
+    return norm(x, -7)
+
 if __name__ == "__main__":
     out = Path(sys.argv[1] if len(sys.argv) > 1 else "sounds")
     out.mkdir(parents=True, exist_ok=True)
@@ -293,6 +369,7 @@ if __name__ == "__main__":
                      ("hit", hit), ("buzz", buzz), ("heart", heart), ("whoosh", whoosh), ("drone", drone), ("ding", ding),
                      ("door", door), ("wind", wind), ("creak", creak), ("fire", fire), ("whisper", whisper), ("drip", drip),
                      ("train", train), ("glass", glass), ("speaker", speaker),
-                     ("pop", pop), ("tap", tap), ("click", click), ("scribble", scribble)]:
+                     ("pop", pop), ("tap", tap), ("click", click), ("scribble", scribble),
+                     ("coin", coin), ("kaching", kaching), ("beat", beat), ("coinroll", coinroll)]:
         save(out / f"{name}.wav", fn())
         print("✓", name)

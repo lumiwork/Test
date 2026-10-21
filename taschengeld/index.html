@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taschengeld nach Alter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Montserrat:wght@600;800;900&family=JetBrains+Mono:wght@700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../engine/engine.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div id="hud"><div class="night"><i></i></div><div id="clock"></div><div id="loc"></div></div>
+  <div id="fx"></div>
+  <div id="cap"></div>
+  <button id="start">▶ START</button>
+  <div id="hint">TASCHENGELD NACH ALTER</div>
+  <button id="again">↺ NOCHMAL</button>
+</div>
+<script src="../engine/engine.js"></script>
+<script src="../engine/papier.js"></script>
+<script>
+// Absichtlich maßlos übertriebene „Tabelle“ (Spaß-Format, keine echte Empfehlung): krumme Beträge pro Monat, 8 bis 18 Jahre.
+// Ohne Sprecher: Text, Geldregen, Zähler und Kassen-Sounds über einem Beat.
+// ---------- Daten ----------
+const AGES=[8,9,10,11,12,13,14,15,16,17,18];
+const AMT=[47,68,93,124,158,205,267,341,438,589,1247];
+const EMO=['🍭','😁','💳','🎮','🥙','😳','🚕','💇','📈','😂','🏖️'];
+const fmtEuro=n=>n.toLocaleString('de-DE')+' €';
+const GOLD='#ffc93c',DEEP='#062818';
+
+// ---------- Bausteine ----------
+const bills=Array.from({length:80},(_,i)=>({x:rnd(-60,960),y:rnd(-200,1600),v:rnd(160,320),r:rnd(0,6),rs:rnd(1,3),p:rnd(0,6),c:i%7===0}));
+function moneyBg(t,lvl){const g=ctx.createRadialGradient(450,700,80,450,700,1100);g.addColorStop(0,'#1f7a4d');g.addColorStop(.55,'#0e4a2e');g.addColorStop(1,DEEP);ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);
+  // Strahlenkranz hinter der Zahl, wird mit jedem Jahr kräftiger
+  ctx.save();ctx.translate(450,700);ctx.rotate(t*.15);ctx.fillStyle=`rgba(255,201,60,${.05+lvl*.012})`;
+  for(let i=0;i<16;i++){ctx.rotate(Math.PI/8);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-90,-1400);ctx.lineTo(90,-1400);ctx.closePath();ctx.fill();}ctx.restore();
+  // dezentes €-Muster
+  ctx.save();ctx.globalAlpha=.05;ctx.fillStyle='#fff';ctx.font='900 60px Montserrat, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let y=0;y<VH+120;y+=150)for(let x=(y/150)%2?75:0;x<VW+80;x+=150)ctx.fillText('€',x,(y+t*20)%(VH+150)-75);ctx.restore();}
+function bill(){ctx.fillStyle='#8fd18f';rr(ctx,-75,-38,150,76,8);ctx.fill();ctx.strokeStyle='#2e6b3a';ctx.lineWidth=4;rr(ctx,-75,-38,150,76,8);ctx.stroke();
+  ctx.strokeStyle='rgba(46,107,58,.55)';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(0,0,24,26,0,0,7);ctx.stroke();
+  ctx.fillStyle='#2e6b3a';ctx.font='900 30px Montserrat, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('€',0,2);ctx.font='900 16px Montserrat, sans-serif';ctx.fillText('100',-50,-22);ctx.fillText('100',50,24);}
+function goldCoin(r=26){ctx.fillStyle=GOLD;ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();ctx.strokeStyle='#b37a00';ctx.lineWidth=r*.16;ctx.stroke();
+  ctx.fillStyle='#b37a00';ctx.font=`900 ${r*1.1}px Montserrat, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('€',0,2);}
+function moneyRain(t,n){for(let i=0;i<Math.min(n,bills.length);i++){const b=bills[i],y=((b.y+t*b.v)%1800+1800)%1800-150,x=b.x+Math.sin(t*b.rs+b.p)*40;
+  ctx.save();ctx.translate(x,y);ctx.rotate(b.r+Math.sin(t*b.rs+b.p)*.6);ctx.globalAlpha=.8;
+  if(b.c)goldCoin(24);else{ctx.scale(1,.55+.45*Math.abs(Math.cos(t*b.rs*1.3+b.p)));bill();}ctx.restore();}}
+// Münzen spritzen aus der Zahl, sobald der Betrag steht
+let burst=[];
+function spawnBurst(t,n){for(let i=0;i<n;i++){const a=rnd(-Math.PI*.95,-Math.PI*.05);const v=rnd(500,1200);burst.push({t0:t,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:rnd(0,6),rs:rnd(-8,8),s:rnd(.6,1.2),b:Math.random()<.4});}}
+function drawBurst(t){burst=burst.filter(p=>t-p.t0<2.2);for(const p of burst){const k=t-p.t0,x=450+p.vx*k,y=700+p.vy*k+1300*k*k;
+  ctx.save();ctx.translate(x,y);ctx.rotate(p.r+p.rs*k);ctx.scale(p.s,p.s);if(p.b){ctx.scale(.7,.7);bill();}else goldCoin(22);ctx.restore();}}
+function bigAmount(t,txt,size,bounce,shake){ctx.save();ctx.translate(450+(shake?rnd(-shake,shake):0),700+(shake?rnd(-shake,shake):0));
+  ctx.font=`700 ${size}px Oswald, sans-serif`;const w=ctx.measureText(txt).width;const s=Math.min(1,820/w)*bounce;ctx.scale(s,s);
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+  ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowOffsetY=14;ctx.shadowBlur=0;ctx.strokeStyle=DEEP;ctx.lineWidth=26;ctx.strokeText(txt,0,0);ctx.shadowColor='transparent';
+  const g=ctx.createLinearGradient(0,-size*.45,0,size*.45);g.addColorStop(0,'#fffbd6');g.addColorStop(.45,GOLD);g.addColorStop(1,'#e08a00');ctx.fillStyle=g;ctx.fillText(txt,0,0);ctx.restore();}
+function header(a){if(a<=.01)return;ctx.save();ctx.globalAlpha=a;ctx.font='900 40px Montserrat, sans-serif';const txt='TASCHENGELD PRO MONAT';const w=ctx.measureText(txt).width+130;
+  ctx.fillStyle='#fffdf5';rr(ctx,450-w/2,208,w,88,44);ctx.fill();ctx.fillStyle=DEEP;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,450+26,254);ctx.font='46px "Noto Color Emoji"';ctx.fillText('💸',450-w/2+54,254);ctx.restore();}
+function ageLabel(t,i,s){if(s<=.001)return;ctx.save();ctx.translate(450,450);ctx.scale(s,s);ctx.rotate(-.03);ctx.font='700 118px Oswald, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+  const txt=`AB ${AGES[i]} JAHREN`;ctx.strokeStyle=DEEP;ctx.lineWidth=20;ctx.strokeText(txt,0,0);ctx.fillStyle='#fff';ctx.fillText(txt,0,0);ctx.restore();}
+function timeline(t,cur){const y=1040,x0=105,dx=69;
+  ctx.lineCap='round';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x0+dx*10,y);ctx.stroke();
+  if(cur>0){ctx.strokeStyle=GOLD;ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x0+dx*cur,y);ctx.stroke();}
+  AGES.forEach((a,i)=>{const x=x0+dx*i;ctx.save();ctx.translate(x,y);
+    if(i===cur){const r=31+Math.sin(t*6)*2;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();ctx.strokeStyle=GOLD;ctx.lineWidth=7;ctx.stroke();bold(String(a),0,2,28,DEEP);}
+    else if(i<cur){ctx.fillStyle=GOLD;ctx.beginPath();ctx.arc(0,0,23,0,7);ctx.fill();bold(String(a),0,2,22,DEEP);}
+    else{ctx.fillStyle=DEEP;ctx.beginPath();ctx.arc(0,0,21,0,7);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=4;ctx.stroke();bold(String(a),0,2,20,'rgba(255,255,255,.55)');}
+    ctx.restore();});}
+
+const scenes={
+  table:{draw(t){const i=S.ai??0;moneyBg(t,i);moneyRain(t,4+i*7);
+    // Zum Schluss (Frage + Abspann) tritt alles außer Hintergrund und Geldregen zurück
+    const fa=S.q==null?1:Math.max(0,1-(t-S.q)/.35);drawBurst(t);ctx.globalAlpha=fa;
+    const hideH=S.nud!=null&&t>S.nud-.2&&t<S.nud+2.9;S.hA=(S.hA??1)+((hideH?0:1)-(S.hA??1))*.15;header(S.hA*fa);
+    ageLabel(t,i,S.ta==null?1:popAt(t,S.ta,.35));
+    // Betrag: vor dem ersten Hochzählen „?? €“, dann rattert er vom alten auf den neuen Wert
+    let txt,size=230+i*7,b=1,sh=0;
+    if(S.tr==null){txt='?? €';b=1+Math.sin(t*9)*.04;}
+    else{const p=Math.min(1,Math.max(0,(t-S.tr)/S.rd));txt=fmtEuro(Math.round(S.from+(AMT[i]-S.from)*(1-(1-p)**3)));
+      if(p<1)sh=4+i*1.2;if(S.tk!=null&&t>=S.tk){const k=t-S.tk;b=1+.32*Math.exp(-k*6)*Math.cos(k*18);if(i===10)sh=Math.max(0,14-k*10);}}
+    if(S.tk!=null&&t>=S.tk){const k=t-S.tk;glow(450,700,520,'255,201,60',Math.max(.12,.55*Math.exp(-k*3)));}
+    bigAmount(t,txt,size,b,sh);
+    if(S.tk!=null&&t>=S.tk)at(450,890,popAt(t,S.tk+.1,.35),5,()=>{ctx.rotate(Math.sin(t*4)*.12);ctx.font='110px "Noto Color Emoji"';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(EMO[i],0,0);});
+    timeline(t,i);ctx.globalAlpha=1;
+    if(S.flash!=null){const k=t-S.flash;if(k<.6){ctx.fillStyle=`rgba(255,250,220,${.85*(1-k/.6)})`;ctx.fillRect(0,0,VW,VH);}}}},
+};
+
+// ---------- Ablauf ----------
+// Ein Alter: Jahreszahl springt rein, Betrag rattert hoch, ka-ching + Münzregen
+async function reveal(i,{first=false,roll=.7}={}){
+  if(!first){S.ai=i;S.ta=now();sfx('whoosh',.35);await sleep(250);}
+  S.from=i?AMT[i-1]:0;S.tr=now();S.rd=roll;S.tk=null;sfx('coinroll',.7);if(roll>.9)setTimeout(()=>sfx('coinroll',.8),700);
+  await sleep(roll*1000);S.tk=now();sfx('kaching',.9);spawnBurst(now(),i===10?70:10+i*3);
+  if(i===10){sfx('hit',.9);S.flash=now();}}
+async function step(i,gag,ms=2400,o={}){await Promise.all([reveal(i,o),(async()=>{await sleep(o.capDelay??300);await cap(gag,o.cap||{});})(),sleep(ms)]);}
+
+async function story(){
+  go('table');S.ai=0;hud(false);bed('beat',.5);
+  await Promise.all([cap('Ab *8* hast du so viel:',{big:1}),(async()=>{await sleep(1100);await reveal(0,{first:true});})(),sleep(3000)]);
+  await step(1,'Plus Bonus fürs *Zähneputzen.*');
+  await step(2,'Eigene Karte. Eigene #Regeln.');
+  await step(3,'Jeder Skin. *Sofort.*');
+  await step(4,'Döner für die ganze *Klasse.*');
+  S.nud=now();followNudge('FOLG FÜR MEHR',2600);
+  await step(5,'Jetzt wird es #ernst.');
+  await step(6,'Taxi statt *Fahrrad.*');
+  await step(7,'Eigener ~Friseur.');
+  await step(8,'Du brauchst einen #Steuerberater.');
+  await step(9,'Mama fragt DICH nach *Geld.*');
+  await step(10,'Rente mit *19.*',3900,{roll:1.6,capDelay:1900,cap:{big:1}});
+  S.q=now();dimT=.3;const c=choice('MEHR 🤑','WENIGER 💀','30%');sfx('pop',.6);
+  await cap('Und du? Mehr oder #weniger?',{big:1,top:'70%'});await sleep(600);
+  await out(c);dimT=.5;
+  outro('TASCHENGELD','MEHR <span class="hl">LISTEN</span>','WIE VIEL KRIEGST DU? 👇');sfx('kaching',.6);
+  await sleep(3600);finish();
+}
+boot('table');
+</script>
+</body>
+</html>
