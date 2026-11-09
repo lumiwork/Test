@@ -1,0 +1,29 @@
+# SilentAC – erkennt still, greift nie ein (kein Kick, kein Zurücksetzen).
+# Verstöße gehen nur an Teammitglieder mit silentac.alerts und in plugins/SilentAC/violations.log.
+
+alerts:
+  # Mindest-VL, ab dem eine Meldung an das Team geht
+  min-vl: 3
+  # Höchstens eine Meldung pro Spieler und Check in diesem Abstand (ms)
+  cooldown-ms: 2000
+
+# VL sinkt pro Minute um diesen Wert
+vl-decay-per-minute: 2.0
+
+speed:
+  enabled: true
+  # Zusätzlicher Spielraum auf die berechnete Höchstgeschwindigkeit (Blöcke pro Tick)
+  tolerance: 0.03
+  # Wie viele zu schnelle Bewegungen gesammelt werden, bevor VL steigt
+  buffer: 6
+
+reach:
+  enabled: true
+  # Grundreichweite kommt aus dem Attribut entity_interaction_range (Vanilla: 3.0)
+  # Zusätzlicher Spielraum (Blöcke)
+  tolerance: 0.3
+  # Ping-Ausgleich: so viele Blöcke pro 50 ms Ping zusätzlich (Ziel bewegt sich)
+  ping-compensation-per-tick: 0.1
+  # Ab diesem Ping wird Reach nicht mehr geprüft (zu ungenau)
+  max-ping: 300
+  buffer: 2
