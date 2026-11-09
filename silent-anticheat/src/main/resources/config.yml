@@ -7,6 +7,13 @@ alerts:
   # Höchstens eine Meldung pro Spieler und Check in diesem Abstand (ms)
   cooldown-ms: 2000
 
+# Jeder Alert wird zusätzlich an diesen Webhook geschickt (z. B. Discord-Webhook-URL).
+webhook:
+  enabled: false
+  url: ""
+  # Anzeigename des Absenders (bei Discord)
+  username: "SilentAC"
+
 # VL sinkt pro Minute um diesen Wert
 vl-decay-per-minute: 2.0
 
