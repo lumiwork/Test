@@ -34,3 +34,73 @@ reach:
   # Ab diesem Ping wird Reach nicht mehr geprüft (zu ungenau)
   max-ping: 300
   buffer: 2
+
+block-reach:
+  enabled: true
+  # Grundreichweite kommt aus dem Attribut block_interaction_range (Vanilla: 4.5)
+  tolerance: 0.5
+  buffer: 1
+
+# Meteor SpeedMine / FastBreak: Block schneller abgebaut als möglich
+fast-break:
+  enabled: true
+  # Meldung, wenn weniger als dieser Anteil der normalen Abbauzeit gebraucht wurde
+  # (Meteor SpeedMine "Damage" bricht bei 70 % ab)
+  min-ratio: 0.85
+  # Blöcke mit weniger Abbauzeit (Ticks) werden ignoriert, da Lag hier zu stark wirkt
+  min-ticks: 4
+  buffer: 2
+
+# Meteor Nuker: mehrere Blöcke pro Tick, Abbau ohne Start, Abbau ohne hinzuschauen
+nuker:
+  enabled: true
+  # Größter erlaubter Winkel zwischen Blickrichtung und abgebautem Block
+  max-angle: 60
+  buffer: 2
+
+# Meteor Rotations: Blick springt für eine Aktion zum Ziel und sofort zurück
+rotation:
+  enabled: true
+  snap-degrees: 30
+  buffer: 2
+
+# Meteor KillAura: Treffer ohne Zielen oder durch Wände
+killaura:
+  enabled: true
+  hitbox-expand: 0.5
+  buffer: 3
+
+anti-xray:
+  enabled: true
+  # Leer = alle Welten
+  worlds: []
+  # Echte Erze werden erst in diesem Abstand (Blöcke) an den Client geschickt
+  reveal-radius: 5
+  hidden-blocks:
+    - DIAMOND_ORE
+    - DEEPSLATE_DIAMOND_ORE
+    - EMERALD_ORE
+    - DEEPSLATE_EMERALD_ORE
+    - GOLD_ORE
+    - DEEPSLATE_GOLD_ORE
+    - NETHER_GOLD_ORE
+    - IRON_ORE
+    - DEEPSLATE_IRON_ORE
+    - REDSTONE_ORE
+    - DEEPSLATE_REDSTONE_ORE
+    - LAPIS_ORE
+    - DEEPSLATE_LAPIS_ORE
+    - ANCIENT_DEBRIS
+  # Fake-Erze als Block Displays, komplett in Stein eingeschlossen (nur mit X-Ray sichtbar)
+  fake-ores:
+    enabled: true
+    # Kantenlänge in Blöcken (2 = 2x2x2)
+    size: 2
+    per-chunk: 3
+    max-y: 32
+    overworld:
+      - DIAMOND_ORE
+      - EMERALD_ORE
+      - GOLD_ORE
+    nether:
+      - ANCIENT_DEBRIS

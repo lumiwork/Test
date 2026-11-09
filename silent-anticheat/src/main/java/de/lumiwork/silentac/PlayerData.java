@@ -5,7 +5,7 @@ import java.util.Map;
 
 public final class PlayerData {
 
-    public enum CheckType { SPEED, REACH }
+    public enum CheckType { SPEED, REACH, BLOCK_REACH, FAST_BREAK, NUKER, ROTATION, KILLAURA }
 
     private final Map<CheckType, Double> vl = new EnumMap<>(CheckType.class);
     private final Map<CheckType, Double> buffer = new EnumMap<>(CheckType.class);
@@ -18,6 +18,24 @@ public final class PlayerData {
     public int lastLiquidTick;
     public int lastBounceTick;
     public boolean alertsEnabled = true;
+
+    // Rotation sampled once per server tick
+    public float tickYaw;
+    public float prevTickYaw;
+    public int snapTick = -1000;
+    public float snapPreYaw;
+    public float snapActionYaw;
+    public String snapAction = "";
+
+    // Mining
+    public long digPos = Long.MIN_VALUE;
+    public int digStartTick;
+    public int digStartsTick = -1;
+    public int digStartsThisTick;
+    public int breaksTick = -1;
+    public int breaksThisTick;
+    public long lastBreakPos = Long.MIN_VALUE;
+    public int lastBreakTick = -1000;
 
     public double vl(CheckType type) {
         return vl.getOrDefault(type, 0.0);

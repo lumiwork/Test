@@ -1,8 +1,11 @@
 package de.lumiwork.silentac;
 
 import de.lumiwork.silentac.PlayerData.CheckType;
+import de.lumiwork.silentac.check.BlockCheck;
 import de.lumiwork.silentac.check.ReachCheck;
+import de.lumiwork.silentac.check.RotationCheck;
 import de.lumiwork.silentac.check.SpeedCheck;
+import de.lumiwork.silentac.xray.AntiXray;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -14,15 +17,18 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public final class SilentAC extends JavaPlugin implements Listener {
 
     private final Map<UUID, PlayerData> players = new ConcurrentHashMap<>();
     private AlertManager alerts;
+    private AntiXray antiXray;
 
     @Override
     public void onEnable() {
@@ -31,10 +37,21 @@ public final class SilentAC extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(new SpeedCheck(this), this);
         Bukkit.getPluginManager().registerEvents(new ReachCheck(this), this);
+        Bukkit.getPluginManager().registerEvents(new BlockCheck(this), this);
+        Bukkit.getPluginManager().registerEvents(new RotationCheck(this), this);
+        antiXray = new AntiXray(this);
+        Bukkit.getPluginManager().registerEvents(antiXray, this);
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             double decay = getConfig().getDouble("vl-decay-per-minute", 2.0);
             players.values().forEach(data -> data.decay(decay));
         }, 1200L, 1200L);
+    }
+
+    @Override
+    public void onDisable() {
+        if (antiXray != null) {
+            antiXray.shutdown();
+        }
     }
 
     public PlayerData data(Player player) {
@@ -79,12 +96,15 @@ public final class SilentAC extends JavaPlugin implements Listener {
                     data.reset();
                     sender.sendMessage(prefix().append(Component.text("VL of " + target.getName() + " reset.", NamedTextColor.GRAY)));
                 } else {
-                    sender.sendMessage(prefix().append(Component.text(String.format("%s: SPEED %.1f | REACH %.1f",
-                            target.getName(), data.vl(CheckType.SPEED), data.vl(CheckType.REACH)), NamedTextColor.GRAY)));
+                    String vls = Arrays.stream(CheckType.values())
+                            .map(type -> String.format("%s %.1f", type, data.vl(type)))
+                            .collect(Collectors.joining(" | "));
+                    sender.sendMessage(prefix().append(Component.text(target.getName() + ": " + vls, NamedTextColor.GRAY)));
                 }
             }
             case "reload" -> {
                 reloadConfig();
+                antiXray.reload();
                 sender.sendMessage(prefix().append(Component.text("Config reloaded.", NamedTextColor.GRAY)));
             }
             default -> {
