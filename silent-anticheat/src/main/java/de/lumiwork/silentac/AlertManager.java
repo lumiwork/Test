@@ -35,6 +35,10 @@ public final class AlertManager {
     }
 
     public void flag(Player player, CheckType type, double vlAdd, String details) {
+        if (plugin.bedrock().isBedrock(player)
+                && plugin.getConfig().getStringList("bedrock.disabled-checks").contains(type.name())) {
+            return;
+        }
         PlayerData data = plugin.data(player);
         double vl = data.addVl(type, vlAdd);
         String line = String.format("%s %s failed %s (VL %.1f) %s",
@@ -60,7 +64,7 @@ public final class AlertManager {
         sendWebhook(String.format("**%s** failed **%s** (VL %.1f) `%s`", player.getName(), type, vl, details));
     }
 
-    private void sendWebhook(String content) {
+    public void sendWebhook(String content) {
         if (!plugin.getConfig().getBoolean("webhook.enabled", false)) {
             return;
         }

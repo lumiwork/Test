@@ -85,15 +85,18 @@ public final class RotationCheck implements Listener {
             return;
         }
         recordAction(player, "attack");
-        if (!config().getBoolean("killaura.enabled", true)) {
+        // Spear charge damages whatever the player runs into, independent of aim.
+        if (!config().getBoolean("killaura.enabled", true)
+                || (player.isHandRaised() && Weapons.isKinetic(player.getActiveItem()))) {
             return;
         }
         Entity target = event.getEntity();
         PlayerData data = plugin.data(player);
         Location eye = player.getEyeLocation();
         Vector origin = eye.toVector();
-        BoundingBox box = target.getBoundingBox().expand(config().getDouble("killaura.hitbox-expand", 0.5));
-        double maxDistance = 7;
+        BoundingBox box = target.getBoundingBox().expand(config().getDouble("killaura.hitbox-expand", 0.5)
+                + plugin.bedrockExtra(player, "killaura-hitbox"));
+        double maxDistance = Weapons.entityReach(player) + 4;
 
         if (!box.contains(origin) && box.rayTrace(origin, eye.getDirection(), maxDistance) == null) {
             Vector toTarget = target.getBoundingBox().getCenter().subtract(origin);

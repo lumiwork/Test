@@ -161,7 +161,8 @@ public final class BlockCheck implements Listener {
             return;
         }
         AttributeInstance attribute = player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE);
-        double max = (attribute != null ? attribute.getValue() : 4.5) + config().getDouble("block-reach.tolerance", 0.5);
+        double max = (attribute != null ? attribute.getValue() : 4.5) + config().getDouble("block-reach.tolerance", 0.5)
+                + plugin.bedrockExtra(player, "block-reach");
         double distance = Geometry.distanceToBox(player.getEyeLocation().toVector(), Geometry.fullBox(block));
         if (distance > max) {
             PlayerData data = plugin.data(player);

@@ -3,9 +3,8 @@ package de.lumiwork.silentac.check;
 import de.lumiwork.silentac.PlayerData;
 import de.lumiwork.silentac.PlayerData.CheckType;
 import de.lumiwork.silentac.SilentAC;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -48,12 +47,15 @@ public final class ReachCheck implements Listener {
         }
 
         double distance = distanceToBox(player.getEyeLocation().toVector(), target.getBoundingBox().expand(HITBOX_MARGIN));
-        double limit = baseReach(player)
-                + plugin.getConfig().getDouble("reach.tolerance", 0.3)
-                + (ping / 50.0) * plugin.getConfig().getDouble("reach.ping-compensation-per-tick", 0.1)
-                + horizontalSpeed(target.getVelocity()) * 2;
-
         PlayerData data = plugin.data(player);
+        double limit = Weapons.entityReach(player)
+                + plugin.getConfig().getDouble("reach.tolerance", 0.3)
+                + plugin.bedrockExtra(player, "reach")
+                + (Bukkit.getCurrentTick() - data.lastMoveTick <= 2 ? data.lastMoveDistance : 0)
+                + (ping / 50.0) * plugin.getConfig().getDouble("reach.ping-compensation-per-tick", 0.1)
+                // The target can move about one tick plus the ping time before the client sees it.
+                + Math.min(1.0, horizontalSpeed(target.getVelocity()) * (1 + ping / 50.0));
+
         if (distance > limit) {
             double buffer = data.addBuffer(CheckType.REACH, 1);
             if (buffer > plugin.getConfig().getInt("reach.buffer", 2)) {
@@ -65,10 +67,6 @@ public final class ReachCheck implements Listener {
         }
     }
 
-    private static double baseReach(Player player) {
-        AttributeInstance attribute = player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE);
-        return attribute != null ? attribute.getValue() : 3.0;
-    }
 
     private static double horizontalSpeed(Vector velocity) {
         return Math.hypot(velocity.getX(), velocity.getZ());

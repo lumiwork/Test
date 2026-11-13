@@ -19,6 +19,13 @@ public final class PlayerData {
     public int lastBounceTick;
     public boolean alertsEnabled = true;
 
+    // Momentum carried over from elytra / riptide, decays like air drag
+    public double momentum;
+    public int momentumTick = -1000;
+    public int lastWeaponTick = -1000;
+    public double lastMoveDistance;
+    public int lastMoveTick = -1000;
+
     // Rotation sampled once per server tick
     public float tickYaw;
     public float prevTickYaw;

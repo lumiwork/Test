@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -55,13 +56,27 @@ public final class SpeedCheck implements Listener {
         PlayerData data = plugin.data(player);
         int tick = Bukkit.getCurrentTick();
         updateEnvironment(player, data, to, tick);
+        data.lastMoveDistance = distance;
+        data.lastMoveTick = tick;
+
+        // Elytra and riptide are not limited, but their momentum is carried into the next ticks.
+        if (player.isGliding() || player.isRiptiding()) {
+            data.momentum = distance;
+            data.momentumTick = tick;
+            data.resetBuffer(CheckType.SPEED);
+            return;
+        }
+        if (player.isHandRaised() && Weapons.isKinetic(player.getActiveItem())) {
+            data.lastWeaponTick = tick;
+        }
 
         if (isExempt(player, data, tick)) {
             data.resetBuffer(CheckType.SPEED);
             return;
         }
 
-        double limit = limit(player, data, tick) + plugin.getConfig().getDouble("speed.tolerance", 0.03);
+        double limit = limit(player, data, tick) + plugin.getConfig().getDouble("speed.tolerance", 0.03)
+                + plugin.bedrockExtra(player, "speed");
         if (distance > limit) {
             double buffer = data.addBuffer(CheckType.SPEED, 1);
             if (buffer > plugin.getConfig().getInt("speed.buffer", 6)) {
@@ -96,6 +111,14 @@ public final class SpeedCheck implements Listener {
         if (tick - data.lastLiquidTick < 20) {
             limit = Math.max(limit, 0.6);
         }
+        // Decay per received move (not per server tick) so bundled packets under lag stay in step with the client.
+        if (data.momentum > 0 && tick - data.momentumTick < 200) {
+            data.momentum *= player.isOnGround() ? 0.6 : 0.91;
+            limit = Math.max(limit, data.momentum + 0.05);
+            if (data.momentum < 0.05) {
+                data.momentum = 0;
+            }
+        }
         return limit;
     }
 
@@ -105,9 +128,8 @@ public final class SpeedCheck implements Listener {
                 || player.getGameMode() == GameMode.SPECTATOR
                 || player.isFlying()
                 || player.getAllowFlight()
-                || player.isGliding()
-                || player.isRiptiding()
                 || player.isInsideVehicle()
+                || tick - data.lastWeaponTick < plugin.getConfig().getInt("speed.weapon-exempt-ticks", 20)
                 || player.isDead()
                 || tick < data.exemptUntilTick
                 || tick - data.lastBounceTick < 40;
@@ -148,6 +170,14 @@ public final class SpeedCheck implements Listener {
     public void onVelocity(PlayerVelocityEvent event) {
         double horizontal = Math.hypot(event.getVelocity().getX(), event.getVelocity().getZ());
         exempt(event.getPlayer(), 20 + (int) (horizontal * 40));
+    }
+
+    // Spear lunge / jab moves the player forward.
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onSwing(PlayerAnimationEvent event) {
+        if (Weapons.holdsSpecial(event.getPlayer())) {
+            plugin.data(event.getPlayer()).lastWeaponTick = Bukkit.getCurrentTick();
+        }
     }
 
     @EventHandler
