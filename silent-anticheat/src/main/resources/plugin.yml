@@ -1,0 +1,26 @@
+name: SilentAC
+version: '${version}'
+main: de.lumiwork.silentac.SilentAC
+api-version: '1.21'
+description: Silent anticheat for speed and reach detection.
+commands:
+  silentac:
+    description: SilentAC staff command
+    usage: /silentac <admin|alerts|vl|reset|ban|unban|reload>
+    aliases: [sac]
+    permission: silentac.admin
+permissions:
+  silentac.alerts:
+    description: Receive anticheat alerts
+    default: op
+  silentac.admin:
+    description: Use /silentac
+    default: op
+    children:
+      silentac.alerts: true
+  silentac.combat.bypass:
+    description: Not combat tagged
+    default: false
+  silentac.bypass:
+    description: Not checked by the anticheat
+    default: false

@@ -1,0 +1,196 @@
+# SilentAC – erkennt still, greift nie ein (kein Kick, kein Zurücksetzen).
+# Verstöße gehen nur an Teammitglieder mit silentac.alerts und in plugins/SilentAC/violations.log.
+
+alerts:
+  # Mindest-VL, ab dem eine Meldung an das Team geht
+  min-vl: 3
+  # Höchstens eine Meldung pro Spieler und Check in diesem Abstand (ms)
+  cooldown-ms: 2000
+
+# Jeder Alert wird zusätzlich an diesen Webhook geschickt (z. B. Discord-Webhook-URL).
+webhook:
+  enabled: false
+  url: ""
+  # Anzeigename des Absenders (bei Discord)
+  username: "SilentAC"
+
+# VL sinkt pro Minute um diesen Wert
+vl-decay-per-minute: 2.0
+
+speed:
+  enabled: true
+  # Zusätzlicher Spielraum auf die berechnete Höchstgeschwindigkeit (Blöcke pro Tick)
+  tolerance: 0.03
+  # Wie viele zu schnelle Bewegungen gesammelt werden, bevor VL steigt
+  buffer: 6
+  # So viele Ticks nach einem Speer-Stoß/Ausfallschritt wird Speed nicht geprüft
+  weapon-exempt-ticks: 20
+
+reach:
+  enabled: true
+  # Grundreichweite kommt aus dem Attribut entity_interaction_range (Vanilla: 3.0),
+  # bei Speeren aus deren Item-Reichweite
+  # Zusätzlicher Spielraum (Blöcke)
+  tolerance: 0.3
+  # Ping-Ausgleich: so viele Blöcke pro 50 ms Ping zusätzlich (Ziel bewegt sich)
+  ping-compensation-per-tick: 0.1
+  # Ab diesem Ping wird Reach nicht mehr geprüft (zu ungenau)
+  max-ping: 300
+  buffer: 2
+
+block-reach:
+  enabled: true
+  # Grundreichweite kommt aus dem Attribut block_interaction_range (Vanilla: 4.5)
+  tolerance: 0.5
+  buffer: 1
+
+# Meteor SpeedMine / FastBreak: Block schneller abgebaut als möglich
+fast-break:
+  enabled: true
+  # Meldung, wenn weniger als dieser Anteil der normalen Abbauzeit gebraucht wurde
+  # (Meteor SpeedMine "Damage" bricht bei 70 % ab)
+  min-ratio: 0.85
+  # Blöcke mit weniger Abbauzeit (Ticks) werden ignoriert, da Lag hier zu stark wirkt
+  min-ticks: 4
+  buffer: 2
+
+# Meteor Nuker: mehrere Blöcke pro Tick, Abbau ohne Start, Abbau ohne hinzuschauen
+nuker:
+  enabled: true
+  # Größter erlaubter Winkel zwischen Blickrichtung und abgebautem Block
+  max-angle: 60
+  buffer: 2
+
+# Meteor Rotations: Blick springt für eine Aktion zum Ziel und sofort zurück
+rotation:
+  enabled: true
+  snap-degrees: 30
+  buffer: 2
+
+# Meteor KillAura: Treffer ohne Zielen oder durch Wände
+killaura:
+  enabled: true
+  hitbox-expand: 0.5
+  buffer: 3
+
+anti-xray:
+  enabled: true
+  # Leer = alle Welten
+  worlds: []
+  # Echte Erze werden erst in diesem Abstand (Blöcke) an den Client geschickt
+  reveal-radius: 5
+  hidden-blocks:
+    - DIAMOND_ORE
+    - DEEPSLATE_DIAMOND_ORE
+    - EMERALD_ORE
+    - DEEPSLATE_EMERALD_ORE
+    - GOLD_ORE
+    - DEEPSLATE_GOLD_ORE
+    - NETHER_GOLD_ORE
+    - IRON_ORE
+    - DEEPSLATE_IRON_ORE
+    - REDSTONE_ORE
+    - DEEPSLATE_REDSTONE_ORE
+    - LAPIS_ORE
+    - DEEPSLATE_LAPIS_ORE
+    - ANCIENT_DEBRIS
+  # Fake-Erze als Block Displays, komplett in Stein eingeschlossen (nur mit X-Ray sichtbar)
+  fake-ores:
+    enabled: true
+    # Kantenlänge in Blöcken (2 = 2x2x2)
+    size: 2
+    per-chunk: 3
+    max-y: 32
+    overworld:
+      - DIAMOND_ORE
+      - EMERALD_ORE
+      - GOLD_ORE
+    nether:
+      - ANCIENT_DEBRIS
+
+# Bedrock-Spieler (Geyser/Floodgate) bewegen und bauen anders ab: eigene Toleranzen.
+bedrock:
+  enabled: true
+  # Erkennung ohne Floodgate-API über diesen Namens-Präfix (Floodgate-Standard ".")
+  name-prefix: "."
+  # Diese Checks melden bei Bedrock-Spielern nie (Geyser übersetzt Rotation und Abbau ungenau)
+  disabled-checks:
+    - ROTATION
+    - FAST_BREAK
+  extra-tolerance:
+    speed: 0.1
+    reach: 0.5
+    block-reach: 1.0
+    killaura-hitbox: 0.5
+
+# Stärkerer Enderdrache
+dragon:
+  enabled: true
+  # Vanilla: 200. Über 1024 muss attribute.maxHealth.max in spigot.yml erhöht werden.
+  health: 600
+  # Schaden, den der Drache (und seine Feuerbälle) austeilt
+  damage-multiplier: 1.5
+  # Schaden, den der Drache bekommt (0.75 = 25 % weniger)
+  damage-taken-multiplier: 0.75
+  fireballs:
+    enabled: true
+    # Ghast-Feuerbälle auf den nächsten sichtbaren Spieler
+    interval-ticks: 60
+    per-volley: 1
+    range: 64
+    speed: 1.2
+    spread: 0.05
+    explosion-power: 2.0
+    fire: false
+    break-blocks: false
+  # Unter diesem Lebensanteil wird der Drache wütend
+  rage:
+    below-health: 0.5
+    fireball-interval-multiplier: 0.5
+    fireballs-per-volley: 3
+    damage-multiplier: 1.25
+
+# Combat-Logging: Wer im PvP-Kampf ausloggt, stirbt (Items droppen)
+combat-log:
+  enabled: true
+  duration-seconds: 15
+  kill-on-logout: true
+  # Erlaubte Befehle im Kampf (ohne /)
+  allowed-commands:
+    - msg
+    - tell
+    - r
+  messages:
+    tagged: "<red>Du bist im Kampf mit <white><opponent></white>. Nicht ausloggen!"
+    untagged: "<green>Du bist nicht mehr im Kampf."
+    actionbar: "<red>Im Kampf: <white><seconds>s"
+    command-blocked: "<red>Im Kampf nicht erlaubt (<seconds>s)."
+    logout-broadcast: "<dark_red><player></dark_red> <red>hat sich im Kampf gegen <white><opponent></white> ausgeloggt und ist gestorben."
+
+# Bans: /silentac ban <Spieler> <Vorlage>  oder  /silentac ban <Spieler> <Dauer|perm> <Grund...>
+# Platzhalter (MiniMessage): <player> <reason> <duration> <staff>, im Ban-Bildschirm <reason> <expires> <staff>
+bans:
+  default-broadcast: "<dark_red><bold>BAN</bold></dark_red> <gray>»</gray> <white><player></white> <gray>wurde für <white><duration></white> gebannt: <red><reason>"
+  kick-message: "<red>Du wurdest vom Server gekickt."
+  screen:
+    - "<dark_red><bold>Du wurdest gebannt</bold>"
+    - ""
+    - "<gray>Grund: <white><reason>"
+    - "<gray>Bis: <white><expires>"
+    - "<gray>Von: <white><staff>"
+  templates:
+    cheating:
+      reason: "Unerlaubte Client-Modifikationen"
+      duration: 30d
+      broadcast: "<dark_red><bold>ANTICHEAT</bold></dark_red> <gray>»</gray> <white><player></white> <red>wurde wegen Cheatens für <duration> entfernt."
+    xray:
+      reason: "X-Ray"
+      duration: 14d
+      broadcast: "<dark_red><bold>ANTICHEAT</bold></dark_red> <gray>»</gray> <white><player></white> <red>wurde wegen X-Ray für <duration> gebannt."
+    combatlog:
+      reason: "Combat-Logging"
+      duration: 1d
+    perm:
+      reason: "Schwerer Regelverstoß"
+      duration: perm
+      broadcast: "<dark_red><bold>BAN</bold></dark_red> <gray>»</gray> <white><player></white> <red>wurde permanent gebannt."
